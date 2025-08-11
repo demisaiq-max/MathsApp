@@ -35,7 +35,7 @@ import {
   X
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { boardApiService } from '../../services/boardApiService';
+import { boardApiService } from '../../services/boardApi';
 
 interface AnswerSheetUpload {
   id: string;
