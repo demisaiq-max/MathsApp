@@ -50,6 +50,7 @@ const StudentPortal: React.FC = () => {
     title: '',
     content: ''
   });
+  const [boardTab, setBoardTab] = useState('announcements');
   const [progress, setProgress] = useState<StudentProgress>({
     totalExams: 0,
     averageScore: 0,
@@ -61,13 +62,13 @@ const StudentPortal: React.FC = () => {
 
   useEffect(() => {
     fetchStudentProgress();
-    if (activeTab === 'announcements') {
+    if (activeTab === 'board' && boardTab === 'announcements') {
       fetchAnnouncements();
     }
-    if (activeTab === 'qa') {
+    if (activeTab === 'board' && boardTab === 'qa') {
       fetchQAPosts();
     }
-  }, [activeTab]);
+  }, [activeTab, boardTab]);
 
   const fetchStudentProgress = async () => {
     try {
@@ -207,7 +208,7 @@ const StudentPortal: React.FC = () => {
   const renderDashboard = () => (
     <div className="min-h-screen bg-gray-50">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6">
+      <header className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4">
         <h1 className="text-2xl font-bold mb-1">Welcome back, {profile?.full_name?.split(' ')[0] || 'Student'}!</h1>
         <p className="opacity-90">Ready to check your latest scores?</p>
       </div>
@@ -256,7 +257,12 @@ const StudentPortal: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold">Recent Exams</h3>
-            <button className="text-blue-600 text-sm font-medium">View All</button>
+            <button 
+              onClick={() => setActiveTab('scores')}
+              className="text-blue-600 text-sm font-medium hover:text-blue-700 transition-colors"
+            >
+              View All
+            </button>
           </div>
           <div className="space-y-3">
             {progress.recentExams.slice(0, 2).map((exam, index) => (
@@ -304,7 +310,12 @@ const StudentPortal: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold">Board Updates</h3>
-            <button className="text-blue-600 text-sm font-medium">View Board</button>
+            <button 
+              onClick={() => setActiveTab('board')}
+              className="text-blue-600 text-sm font-medium hover:text-blue-700 transition-colors"
+            >
+              View Board
+            </button>
           </div>
           <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
             <div className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-semibold">
@@ -330,31 +341,282 @@ const StudentPortal: React.FC = () => {
             <Home className="h-5 w-5" />
             <span className="text-xs">Home</span>
           </button>
-          <button className="flex flex-col items-center space-y-1 text-gray-600">
+          <button 
+            onClick={() => setActiveTab('scores')}
+            className={`flex flex-col items-center space-y-1 ${activeTab === 'scores' ? 'text-blue-600' : 'text-gray-600'}`}
+          >
             <BarChart3 className="h-5 w-5" />
             <span className="text-xs">Scores</span>
           </button>
           <button 
-            onClick={() => setActiveTab('qa')}
-            className={`flex flex-col items-center space-y-1 ${activeTab === 'qa' ? 'text-blue-600' : 'text-gray-600'}`}
+            onClick={() => setActiveTab('board')}
+            className={`flex flex-col items-center space-y-1 ${activeTab === 'board' ? 'text-blue-600' : 'text-gray-600'}`}
           >
             <MessageSquare className="h-5 w-5" />
             <span className="text-xs">Board</span>
           </button>
-          <button className="flex flex-col items-center space-y-1 text-gray-600">
+          <button 
+            onClick={() => setActiveTab('profile')}
+            className={`flex flex-col items-center space-y-1 ${activeTab === 'profile' ? 'text-blue-600' : 'text-gray-600'}`}
+          >
             <User className="h-5 w-5" />
             <span className="text-xs">Profile</span>
           </button>
         </div>
       </div>
+    </div>
+  );
 
-      {/* Floating Action Button */}
-      <button 
-        onClick={() => setShowNewQuestion(true)}
-        className="fixed bottom-20 right-4 rounded-full h-14 w-14 bg-blue-600 hover:bg-blue-700 shadow-lg text-white flex items-center justify-center"
-      >
-        <Plus className="h-6 w-6" />
-      </button>
+  const renderScores = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">My Scores</h2>
+      </div>
+
+      {/* Performance Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-1">Total Exams</p>
+              <p className="text-2xl font-bold text-gray-900">{progress.totalExams}</p>
+            </div>
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <BookOpen className="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-1">Average Score</p>
+              <p className={`text-2xl font-bold ${getScoreColor(progress.averageScore)}`}>
+                {progress.averageScore}%
+              </p>
+            </div>
+            <div className="p-3 bg-emerald-100 rounded-lg">
+              <TrendingUp className="h-6 w-6 text-emerald-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-1">Best Score</p>
+              <p className={`text-2xl font-bold ${getScoreColor(progress.bestScore)}`}>
+                {progress.bestScore}%
+              </p>
+            </div>
+            <div className="p-3 bg-orange-100 rounded-lg">
+              <Trophy className="h-6 w-6 text-orange-600" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Detailed Exam History */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Exam History</h3>
+        </div>
+        <div className="p-6">
+          <div className="space-y-4">
+            {progress.recentExams.map((exam, index) => (
+              <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-4">
+                  <div className="bg-blue-100 p-3 rounded-lg">
+                    <BookOpen className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">{exam.subject}</p>
+                    <p className="text-sm text-gray-500">{exam.date}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className={`text-xl font-bold ${getScoreColor(exam.score)}`}>{exam.score}%</div>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getScoreBadgeColor(exam.score)}`}>
+                    Grade: {exam.score >= 90 ? 'A' : exam.score >= 80 ? 'B' : exam.score >= 70 ? 'C' : 'D'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Subject Progress */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Subject Progress</h3>
+        </div>
+        <div className="p-6">
+          <div className="space-y-6">
+            {progress.subjectProgress.map((subject, index) => (
+              <div key={index}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-900">{subject.subject}</span>
+                  <span className={`text-sm font-medium ${getScoreColor(subject.averageScore)}`}>
+                    {subject.averageScore}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${subject.averageScore}%` }}
+                  ></div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">{subject.examCount} exams taken</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderBoard = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">Student Board</h2>
+        <button
+          onClick={() => setShowNewQuestion(true)}
+          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Ask Question</span>
+        </button>
+      </div>
+
+      {/* Board Navigation */}
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="flex border-b border-gray-200">
+          <button
+            onClick={() => setBoardTab('announcements')}
+            className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
+              boardTab === 'announcements'
+                ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <div className="flex items-center justify-center space-x-2">
+              <Bell className="h-4 w-4" />
+              <span>Announcements</span>
+            </div>
+          </button>
+          <button
+            onClick={() => setBoardTab('qa')}
+            className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
+              boardTab === 'qa'
+                ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <div className="flex items-center justify-center space-x-2">
+              <MessageSquare className="h-4 w-4" />
+              <span>Q&A Forum</span>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Board Content */}
+      {boardTab === 'announcements' && renderAnnouncements()}
+      {boardTab === 'qa' && renderQA()}
+
+      {/* New Question Modal */}
+      {showNewQuestion && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Ask a Question</h3>
+              <button
+                onClick={() => setShowNewQuestion(false)}
+                className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Question Title</label>
+                <input
+                  type="text"
+                  value={newQuestion.title}
+                  onChange={(e) => setNewQuestion({ ...newQuestion, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter your question title"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Question Details</label>
+                <textarea
+                  value={newQuestion.content}
+                  onChange={(e) => setNewQuestion({ ...newQuestion, content: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={4}
+                  placeholder="Describe your question in detail"
+                />
+              </div>
+              <div className="flex space-x-3 pt-4">
+                <button
+                  onClick={handleCreateQuestion}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Post Question
+                </button>
+                <button
+                  onClick={() => setShowNewQuestion(false)}
+                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderProfile = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">My Profile</h2>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center space-x-4 mb-6">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+            <User className="h-8 w-8 text-blue-600" />
+          </div>
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">{profile?.full_name}</h3>
+            <p className="text-gray-600">Grade {profile?.grade} Student</p>
+            <p className="text-sm text-gray-500">{user?.email}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="text-center p-4 bg-blue-50 rounded-lg">
+            <div className="text-2xl font-bold text-blue-600">{progress.totalExams}</div>
+            <div className="text-sm text-gray-600">Total Exams</div>
+          </div>
+          <div className="text-center p-4 bg-emerald-50 rounded-lg">
+            <div className="text-2xl font-bold text-emerald-600">{progress.averageScore}%</div>
+            <div className="text-sm text-gray-600">Average Score</div>
+          </div>
+        </div>
+
+        <button
+          onClick={handleSignOut}
+          className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          <LogOut className="h-4 w-4" />
+          <span>Sign Out</span>
+        </button>
+      </div>
     </div>
   );
 
@@ -737,8 +999,9 @@ const StudentPortal: React.FC = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'dashboard' && renderDashboard()}
-        {activeTab === 'announcements' && renderAnnouncements()}
-        {activeTab === 'qa' && renderQA()}
+        {activeTab === 'scores' && renderScores()}
+        {activeTab === 'board' && renderBoard()}
+        {activeTab === 'profile' && renderProfile()}
       </main>
     </div>
   );
