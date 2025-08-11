@@ -8,10 +8,17 @@ import {
   Target,
   Clock,
   Star,
-  LogOut
+  LogOut,
+  Bell,
+  MessageSquare,
+  Plus,
+  Heart,
+  MessageCircle,
+  Send,
+  X
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { studentApiService, ExamResult, UpcomingExam, BoardUpdate, PerformanceTrend } from '../../services/studentApi';
+import { boardApiService, Announcement, QAPost, PostComment } from '../../services/boardApi';
 import StudentExamsList from './StudentExamsList';
 
 interface StudentProgress {
@@ -33,6 +40,17 @@ interface StudentProgress {
 
 const StudentPortal: React.FC = () => {
   const { user, profile, signOut } = useAuth();
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [qaPosts, setQAPosts] = useState<QAPost[]>([]);
+  const [comments, setComments] = useState<{ [key: string]: PostComment[] }>({});
+  const [showNewQuestion, setShowNewQuestion] = useState(false);
+  const [showComments, setShowComments] = useState<string | null>(null);
+  const [newComment, setNewComment] = useState('');
+  const [newQuestion, setNewQuestion] = useState({
+    title: '',
+    content: ''
+  });
   const [progress, setProgress] = useState<StudentProgress>({
     totalExams: 0,
     averageScore: 0,
@@ -40,96 +58,25 @@ const StudentPortal: React.FC = () => {
     recentExams: [],
     subjectProgress: []
   });
-  const [examResults, setExamResults] = useState<ExamResult[]>([]);
-  const [upcomingExams, setUpcomingExams] = useState<UpcomingExam[]>([]);
-  const [boardUpdates, setBoardUpdates] = useState<BoardUpdate[]>([]);
-  const [performanceTrends, setPerformanceTrends] = useState<PerformanceTrend[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchStudentData();
-  }, []);
+    fetchStudentProgress();
+    if (activeTab === 'announcements') {
+      fetchAnnouncements();
+    }
+    if (activeTab === 'qa') {
+      fetchQAPosts();
+    }
+  }, [activeTab]);
 
-  const fetchStudentData = async () => {
+  const fetchStudentProgress = async () => {
     try {
       setLoading(true);
-      
-      // Fetch all student data
-      const [results, upcoming, updates, trends] = await Promise.all([
-        studentApiService.getExamResults(),
-        studentApiService.getUpcomingExams(profile?.grade || 5),
-        studentApiService.getBoardUpdates(),
-        studentApiService.getPerformanceTrends()
-      ]);
-
-      setExamResults(results);
-      setUpcomingExams(upcoming);
-      setBoardUpdates(updates);
-      setPerformanceTrends(trends);
-
-      // Calculate progress from exam results
-      if (results.length > 0) {
-        const totalExams = results.length;
-        const averageScore = results.reduce((sum, result) => sum + result.score, 0) / totalExams;
-        const bestScore = Math.max(...results.map(result => result.score));
-        
-        // Get recent exams (last 4)
-        const recentExams = results.slice(0, 4).map(result => ({
-          date: result.examDate,
-          subject: result.subject,
-          score: result.score,
-          grade: profile?.grade || 5
-        }));
-
-        // Calculate subject progress
-        const subjectMap = new Map<string, { total: number; count: number }>();
-        results.forEach(result => {
-          const current = subjectMap.get(result.subject) || { total: 0, count: 0 };
-          subjectMap.set(result.subject, {
-            total: current.total + result.score,
-            count: current.count + 1
-          });
-        });
-
-        const subjectProgress = Array.from(subjectMap.entries()).map(([subject, data]) => ({
-          subject,
-          averageScore: Math.round(data.total / data.count),
-          examCount: data.count
-        }));
-
-        setProgress({
-          totalExams,
-          averageScore: Math.round(averageScore),
-          bestScore,
-          recentExams,
-          subjectProgress
-        });
-      } else {
-        // Mock data for demonstration
-        const mockProgress: StudentProgress = {
-          totalExams: 12,
-          averageScore: 78,
-          bestScore: 95,
-          recentExams: [
-            { date: '2025-01-15', subject: 'Math', score: 85, grade: 9 },
-            { date: '2025-01-10', subject: 'Physics', score: 72, grade: 9 },
-            { date: '2025-01-05', subject: 'Math', score: 90, grade: 9 },
-            { date: '2024-12-20', subject: 'Chemistry', score: 68, grade: 9 }
-          ],
-          subjectProgress: [
-            { subject: 'Math', averageScore: 82, examCount: 5 },
-            { subject: 'Physics', averageScore: 75, examCount: 4 },
-            { subject: 'Chemistry', averageScore: 70, examCount: 3 }
-          ]
-        };
-        setProgress(mockProgress);
-      }
-    } catch (error) {
-      console.error('Error fetching student data:', error);
-      // Set mock data on error
+      // Mock data for now - you can replace with actual API calls
       const mockProgress: StudentProgress = {
         totalExams: 12,
-        averageScore: 78,
+        averageScore: 78.5,
         bestScore: 95,
         recentExams: [
           { date: '2025-01-15', subject: 'Math', score: 85, grade: 9 },
@@ -144,8 +91,84 @@ const StudentPortal: React.FC = () => {
         ]
       };
       setProgress(mockProgress);
+    } catch (error) {
+      console.error('Error fetching student progress:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAnnouncements = async () => {
+    try {
+      const data = await boardApiService.getAnnouncements();
+      setAnnouncements(data);
+    } catch (error) {
+      console.error('Error fetching announcements:', error);
+    }
+  };
+
+  const fetchQAPosts = async () => {
+    try {
+      const data = await boardApiService.getQAPosts();
+      setQAPosts(data);
+    } catch (error) {
+      console.error('Error fetching Q&A posts:', error);
+    }
+  };
+
+  const fetchComments = async (postId: string, postType: 'announcement' | 'qa_post') => {
+    try {
+      const data = await boardApiService.getPostComments(postId, postType);
+      setComments(prev => ({ ...prev, [postId]: data }));
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+    }
+  };
+
+  const handleCreateQuestion = async () => {
+    if (!newQuestion.title.trim() || !newQuestion.content.trim()) return;
+
+    try {
+      await boardApiService.createQAPost({
+        title: newQuestion.title,
+        content: newQuestion.content,
+        postType: 'question'
+      });
+      setShowNewQuestion(false);
+      setNewQuestion({ title: '', content: '' });
+      fetchQAPosts();
+    } catch (error) {
+      console.error('Error creating question:', error);
+    }
+  };
+
+  const handleToggleLike = async (postId: string, postType: 'announcement' | 'qa_post') => {
+    try {
+      await boardApiService.toggleLike(postId, postType);
+      if (postType === 'announcement') {
+        fetchAnnouncements();
+      } else {
+        fetchQAPosts();
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    }
+  };
+
+  const handleAddComment = async (postId: string, postType: 'announcement' | 'qa_post') => {
+    if (!newComment.trim()) return;
+
+    try {
+      await boardApiService.addComment(postId, postType, newComment);
+      setNewComment('');
+      fetchComments(postId, postType);
+      if (postType === 'announcement') {
+        fetchAnnouncements();
+      } else {
+        fetchQAPosts();
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
     }
   };
 
@@ -166,6 +189,438 @@ const StudentPortal: React.FC = () => {
     if (score >= 70) return 'bg-orange-100 text-orange-800';
     return 'bg-red-100 text-red-800';
   };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'high':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'normal':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'low':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const renderDashboard = () => (
+    <div className="space-y-8">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-1">Total Exams</p>
+              <p className="text-2xl font-bold text-gray-900">{progress.totalExams}</p>
+            </div>
+            <div className="p-3 bg-blue-100 rounded-lg">
+              <BookOpen className="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-1">Average Score</p>
+              <p className={`text-2xl font-bold ${getScoreColor(progress.averageScore)}`}>
+                {progress.averageScore}%
+              </p>
+            </div>
+            <div className="p-3 bg-emerald-100 rounded-lg">
+              <TrendingUp className="h-6 w-6 text-emerald-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-1">Best Score</p>
+              <p className={`text-2xl font-bold ${getScoreColor(progress.bestScore)}`}>
+                {progress.bestScore}%
+              </p>
+            </div>
+            <div className="p-3 bg-orange-100 rounded-lg">
+              <Award className="h-6 w-6 text-orange-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 mb-1">Current Grade</p>
+              <p className="text-2xl font-bold text-gray-900">{profile?.grade}</p>
+            </div>
+            <div className="p-3 bg-purple-100 rounded-lg">
+              <Star className="h-6 w-6 text-purple-600" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Recent Exams */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <Calendar className="h-5 w-5 mr-2 text-blue-600" />
+              Recent Exams
+            </h3>
+          </div>
+          <div className="p-6">
+            <div className="space-y-4">
+              {progress.recentExams.map((exam, index) => (
+                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium text-gray-900">{exam.subject}</p>
+                    <p className="text-sm text-gray-500">{exam.date}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium ${getScoreBadgeColor(exam.score)}`}>
+                      {exam.score}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Subject Progress */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <BarChart3 className="h-5 w-5 mr-2 text-emerald-600" />
+              Subject Progress
+            </h3>
+          </div>
+          <div className="p-6">
+            <div className="space-y-6">
+              {progress.subjectProgress.map((subject, index) => (
+                <div key={index}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-900">{subject.subject}</span>
+                    <span className={`text-sm font-medium ${getScoreColor(subject.averageScore)}`}>
+                      {subject.averageScore}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${subject.averageScore}%` }}
+                    ></div>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">{subject.examCount} exams taken</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Upcoming Exams */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Exams</h3>
+        <StudentExamsList studentGrade={profile?.grade || 5} />
+      </div>
+    </div>
+  );
+
+  const renderAnnouncements = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">Announcements</h2>
+      </div>
+
+      <div className="space-y-4">
+        {announcements.map((announcement) => (
+          <div key={announcement.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-2">
+                  <h3 className="text-lg font-semibold text-gray-900">{announcement.title}</h3>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPriorityColor(announcement.priority)}`}>
+                    {announcement.priority}
+                  </span>
+                </div>
+                <p className="text-gray-700 mb-3">{announcement.content}</p>
+                <div className="flex items-center space-x-4 text-sm text-gray-500">
+                  <span>By {announcement.authorName}</span>
+                  <span>{new Date(announcement.createdAt).toLocaleDateString()}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => handleToggleLike(announcement.id, 'announcement')}
+                  className={`flex items-center space-x-1 px-3 py-1 rounded-lg transition-colors ${
+                    announcement.isLiked 
+                      ? 'bg-red-50 text-red-600 hover:bg-red-100' 
+                      : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Heart className={`h-4 w-4 ${announcement.isLiked ? 'fill-current' : ''}`} />
+                  <span>{announcement.likesCount}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (showComments === announcement.id) {
+                      setShowComments(null);
+                    } else {
+                      setShowComments(announcement.id);
+                      fetchComments(announcement.id, 'announcement');
+                    }
+                  }}
+                  className="flex items-center space-x-1 px-3 py-1 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  <span>{announcement.commentsCount}</span>
+                </button>
+              </div>
+            </div>
+
+            {showComments === announcement.id && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="space-y-3 mb-4">
+                  {comments[announcement.id]?.map((comment) => (
+                    <div key={comment.id} className="flex space-x-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-medium text-blue-600">
+                          {comment.authorInitials}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-sm font-medium text-gray-900 mb-1">{comment.authorName}</p>
+                          <p className="text-sm text-gray-700">{comment.content}</p>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(comment.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Add a comment..."
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddComment(announcement.id, 'announcement')}
+                  />
+                  <button
+                    onClick={() => handleAddComment(announcement.id, 'announcement')}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderQA = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">Q&A Forum</h2>
+        <button
+          onClick={() => setShowNewQuestion(true)}
+          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Ask Question</span>
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        {qaPosts.map((post) => (
+          <div key={post.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-2">
+                  <h3 className="text-lg font-semibold text-gray-900">{post.title}</h3>
+                  {post.isResolved && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      Resolved
+                    </span>
+                  )}
+                </div>
+                <p className="text-gray-700 mb-3">{post.content}</p>
+                <div className="flex items-center space-x-4 text-sm text-gray-500">
+                  <span>By {post.authorName}</span>
+                  <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+                  {post.answers && post.answers.length > 0 && (
+                    <span>{post.answers.length} answer{post.answers.length !== 1 ? 's' : ''}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => handleToggleLike(post.id, 'qa_post')}
+                  className={`flex items-center space-x-1 px-3 py-1 rounded-lg transition-colors ${
+                    post.isLiked 
+                      ? 'bg-red-50 text-red-600 hover:bg-red-100' 
+                      : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Heart className={`h-4 w-4 ${post.isLiked ? 'fill-current' : ''}`} />
+                  <span>{post.likesCount}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (showComments === post.id) {
+                      setShowComments(null);
+                    } else {
+                      setShowComments(post.id);
+                      fetchComments(post.id, 'qa_post');
+                    }
+                  }}
+                  className="flex items-center space-x-1 px-3 py-1 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  <span>{post.commentsCount}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Answers */}
+            {post.answers && post.answers.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h4 className="font-medium text-gray-900 mb-3">Answers</h4>
+                <div className="space-y-3">
+                  {post.answers.map((answer) => (
+                    <div key={answer.id} className="bg-gray-50 rounded-lg p-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-xs font-medium text-blue-600">
+                            {answer.authorInitials}
+                          </span>
+                        </div>
+                        <span className="text-sm font-medium text-gray-900">{answer.authorName}</span>
+                        <span className="text-xs text-gray-500">
+                          {new Date(answer.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-700">{answer.content}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {showComments === post.id && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="space-y-3 mb-4">
+                  {comments[post.id]?.map((comment) => (
+                    <div key={comment.id} className="flex space-x-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-medium text-blue-600">
+                          {comment.authorInitials}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-sm font-medium text-gray-900 mb-1">{comment.authorName}</p>
+                          <p className="text-sm text-gray-700">{comment.content}</p>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(comment.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Add a comment..."
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddComment(post.id, 'qa_post')}
+                  />
+                  <button
+                    onClick={() => handleAddComment(post.id, 'qa_post')}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* New Question Modal */}
+      {showNewQuestion && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Ask a Question</h3>
+              <button
+                onClick={() => setShowNewQuestion(false)}
+                className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Question Title</label>
+                <input
+                  type="text"
+                  value={newQuestion.title}
+                  onChange={(e) => setNewQuestion({ ...newQuestion, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter your question title"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Question Details</label>
+                <textarea
+                  value={newQuestion.content}
+                  onChange={(e) => setNewQuestion({ ...newQuestion, content: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={4}
+                  placeholder="Describe your question in detail"
+                />
+              </div>
+              <div className="flex space-x-3 pt-4">
+                <button
+                  onClick={handleCreateQuestion}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Post Question
+                </button>
+                <button
+                  onClick={() => setShowNewQuestion(false)}
+                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   if (loading) {
     return (
@@ -208,239 +663,55 @@ const StudentPortal: React.FC = () => {
         </div>
       </header>
 
+      {/* Navigation */}
+      <nav className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex space-x-8">
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'dashboard'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Dashboard
+            </button>
+            <button
+              onClick={() => setActiveTab('announcements')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'announcements'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-1">
+                <Bell className="h-4 w-4" />
+                <span>Announcements</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('qa')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'qa'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-1">
+                <MessageSquare className="h-4 w-4" />
+                <span>Q&A Forum</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </nav>
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Welcome back, {profile?.full_name?.split(' ')[0]}! 👋
-          </h2>
-          <p className="text-gray-600">Here's your academic progress overview</p>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Total Exams</p>
-                <p className="text-2xl font-bold text-gray-900">{progress.totalExams}</p>
-              </div>
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <BookOpen className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Average Score</p>
-                <p className={`text-2xl font-bold ${getScoreColor(progress.averageScore)}`}>
-                  {progress.averageScore}%
-                </p>
-              </div>
-              <div className="p-3 bg-emerald-100 rounded-lg">
-                <TrendingUp className="h-6 w-6 text-emerald-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Best Score</p>
-                <p className={`text-2xl font-bold ${getScoreColor(progress.bestScore)}`}>
-                  {progress.bestScore}%
-                </p>
-              </div>
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <Award className="h-6 w-6 text-orange-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Current Grade</p>
-                <p className="text-2xl font-bold text-gray-900">{profile?.grade}</p>
-              </div>
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Star className="h-6 w-6 text-purple-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Recent Exams */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <Calendar className="h-5 w-5 mr-2 text-blue-600" />
-                Recent Exams
-              </h3>
-            </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                {progress.recentExams.map((exam, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">{exam.subject}</p>
-                      <p className="text-sm text-gray-500">{exam.date}</p>
-                    </div>
-                    <div className="text-right">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium ${getScoreBadgeColor(exam.score)}`}>
-                        {exam.score}%
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Subject Progress */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <BarChart3 className="h-5 w-5 mr-2 text-emerald-600" />
-                Subject Progress
-              </h3>
-            </div>
-            <div className="p-6">
-              <div className="space-y-6">
-                {progress.subjectProgress.map((subject, index) => (
-                  <div key={index}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-900">{subject.subject}</span>
-                      <span className={`text-sm font-medium ${getScoreColor(subject.averageScore)}`}>
-                        {subject.averageScore}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${subject.averageScore}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">{subject.examCount} exams taken</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Performance Trends */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <TrendingUp className="h-5 w-5 mr-2 text-purple-600" />
-            Performance Trends
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {performanceTrends.map((trend, index) => (
-              <div key={trend.id} className="text-center">
-                <div className="relative h-20 flex items-end justify-center mb-2">
-                  <div 
-                    className="w-8 bg-blue-500 rounded-t transition-all duration-300 hover:bg-blue-600"
-                    style={{ height: `${(trend.score / 100) * 80}px` }}
-                  ></div>
-                </div>
-                <p className="text-sm font-medium text-gray-900">{trend.score}%</p>
-                <p className="text-xs text-gray-500">{trend.month}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Upcoming Exams */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Clock className="h-5 w-5 mr-2 text-orange-600" />
-            Upcoming Exams
-          </h3>
-          {upcomingExams.length > 0 ? (
-            <div className="space-y-4">
-              {upcomingExams.map((exam) => (
-                <div key={exam.id} className="flex items-center justify-between p-4 bg-orange-50 rounded-lg border border-orange-200">
-                  <div>
-                    <p className="font-medium text-gray-900">{exam.subject}</p>
-                    <p className="text-sm text-gray-600">{exam.examDate} at {exam.examTime}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                      Grade {exam.gradeLevel}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <StudentExamsList studentGrade={profile?.grade || 5} />
-          )}
-        </div>
-
-        {/* Board Updates */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Target className="h-5 w-5 mr-2 text-green-600" />
-            Board Updates
-          </h3>
-          {boardUpdates.length > 0 ? (
-            <div className="space-y-4">
-              {boardUpdates.map((update) => (
-                <div key={update.id} className="flex items-start space-x-3 p-4 bg-green-50 rounded-lg border border-green-200">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-medium text-green-600">
-                      {update.authorInitials}
-                    </span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <p className="text-sm font-medium text-gray-900">{update.authorName}</p>
-                      <span className="text-xs text-gray-500">
-                        {new Date(update.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-700">{update.message}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No recent board updates</p>
-            </div>
-          )}
-        </div>
-
-        {/* Performance Insights */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Target className="h-5 w-5 mr-2 text-purple-600" />
-            Performance Insights
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <TrendingUp className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-blue-900">Improving</p>
-              <p className="text-xs text-blue-700">Your Math scores are trending upward</p>
-            </div>
-            <div className="text-center p-4 bg-emerald-50 rounded-lg">
-              <Award className="h-8 w-8 text-emerald-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-emerald-900">Strong Performance</p>
-              <p className="text-xs text-emerald-700">Excellent work in recent exams</p>
-            </div>
-            <div className="text-center p-4 bg-orange-50 rounded-lg">
-              <Clock className="h-8 w-8 text-orange-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-orange-900">Focus Area</p>
-              <p className="text-xs text-orange-700">Physics needs more attention</p>
-            </div>
-          </div>
-        </div>
+        {activeTab === 'dashboard' && renderDashboard()}
+        {activeTab === 'announcements' && renderAnnouncements()}
+        {activeTab === 'qa' && renderQA()}
       </main>
     </div>
   );
