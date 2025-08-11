@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { FilterProvider } from './contexts/FilterContext';
 import AuthContainer from './components/Auth/AuthContainer';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
@@ -87,7 +88,9 @@ const AppContent: React.FC = () => {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <FilterProvider>
+        <AppContent />
+      </FilterProvider>
     </AuthProvider>
   );
 }

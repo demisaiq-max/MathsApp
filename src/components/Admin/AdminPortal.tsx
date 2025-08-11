@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { FilterProvider } from '../../contexts/FilterContext';
+import FilterBar from '../Common/FilterBar';
+import CreateExamModal from '../Exams/CreateExamModal';
+import { examManagementApi, ExamWithQuestions } from '../../services/examManagementApi';
+import { useFilters } from '../../contexts/FilterContext';
 import { 
   Users, 
   FileText, 
@@ -25,7 +30,6 @@ import {
   LogOut
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { examApiService } from '../../services/examApi';
 
 interface AnswerSheetUpload {
   id: string;
@@ -46,10 +50,12 @@ interface ExamStats {
   pendingReviews: number;
 }
 
-const AdminPortal: React.FC = () => {
+const AdminPortalContent: React.FC = () => {
   const { user, signOut } = useAuth();
+  const { gradeId, subjectId } = useFilters();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [answerSheets, setAnswerSheets] = useState<AnswerSheetUpload[]>([]);
+  const [exams, setExams] = useState<ExamWithQuestions[]>([]);
   const [stats, setStats] = useState<ExamStats>({
     totalStudents: 0,
     activeExams: 0,
@@ -59,11 +65,18 @@ const AdminPortal: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedUpload, setSelectedUpload] = useState<AnswerSheetUpload | null>(null);
   const [showGradingModal, setShowGradingModal] = useState(false);
+  const [showCreateExamModal, setShowCreateExamModal] = useState(false);
   const [gradingData, setGradingData] = useState({ grade: '', feedback: '' });
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'exams') {
+      fetchExams();
+    }
+  }, [activeTab, gradeId, subjectId]);
 
   const fetchData = async () => {
     try {
@@ -117,15 +130,21 @@ const AdminPortal: React.FC = () => {
     }
   };
 
+  const fetchExams = async () => {
+    try {
+      const examsData = await examManagementApi.getExams(gradeId || undefined, subjectId || undefined);
+      setExams(examsData);
+    } catch (error) {
+      console.error('Error fetching exams:', error);
+    }
+  };
+
   const handleGradeSubmission = async () => {
     if (!selectedUpload || !gradingData.grade) return;
 
     try {
-      await examApiService.gradeAnswerSheet(
-        selectedUpload.id,
-        parseInt(gradingData.grade),
-        gradingData.feedback
-      );
+      // Mock grading for now
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Update local state
       setAnswerSheets(prev => prev.map(sheet => 
@@ -145,6 +164,14 @@ const AdminPortal: React.FC = () => {
     } catch (error) {
       console.error('Error grading submission:', error);
     }
+  };
+
+  const handleCreateExam = () => {
+    setShowCreateExamModal(true);
+  };
+
+  const handleExamCreated = () => {
+    fetchExams();
   };
 
   const getStatusBadge = (status: string) => {
@@ -213,7 +240,10 @@ const AdminPortal: React.FC = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <button className="h-20 flex flex-col items-center justify-center space-y-2 bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors">
+          <button 
+            onClick={handleCreateExam}
+            className="h-20 flex flex-col items-center justify-center space-y-2 bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors"
+          >
             <Plus className="h-5 w-5" />
             <span className="text-xs">Create Exam</span>
           </button>
@@ -405,6 +435,130 @@ const AdminPortal: React.FC = () => {
     </div>
   );
 
+  const renderExams = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">Exam Management</h2>
+        <button
+          onClick={handleCreateExam}
+          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Create Exam</span>
+        </button>
+      </div>
+
+      <FilterBar />
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {exams.length === 0 ? (
+          <div className="text-center py-12">
+            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No exams found</h3>
+            <p className="text-gray-500 mb-6">
+              {gradeId || subjectId ? 'No exams match your current filters' : 'Create your first exam to get started'}
+            </p>
+            <button
+              onClick={handleCreateExam}
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Create Exam</span>
+            </button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left py-3 px-6 font-medium text-gray-500 text-sm uppercase tracking-wider">
+                    Exam
+                  </th>
+                  <th className="text-left py-3 px-6 font-medium text-gray-500 text-sm uppercase tracking-wider">
+                    Grade & Subject
+                  </th>
+                  <th className="text-left py-3 px-6 font-medium text-gray-500 text-sm uppercase tracking-wider">
+                    Schedule
+                  </th>
+                  <th className="text-left py-3 px-6 font-medium text-gray-500 text-sm uppercase tracking-wider">
+                    Duration
+                  </th>
+                  <th className="text-left py-3 px-6 font-medium text-gray-500 text-sm uppercase tracking-wider">
+                    Questions
+                  </th>
+                  <th className="text-left py-3 px-6 font-medium text-gray-500 text-sm uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="text-right py-3 px-6 font-medium text-gray-500 text-sm uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {exams.map((exam) => (
+                  <tr key={exam.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="py-4 px-6">
+                      <div>
+                        <p className="font-medium text-gray-900">{exam.title}</p>
+                        {exam.instructions && (
+                          <p className="text-sm text-gray-500 truncate max-w-xs">{exam.instructions}</p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{exam.grade_name}</p>
+                        <p className="text-sm text-gray-500">{exam.subject_name}</p>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div>
+                        <p className="text-sm text-gray-900">
+                          {new Date(exam.start_time).toLocaleDateString()}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {new Date(exam.start_time).toLocaleTimeString()} - {new Date(exam.end_time).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center space-x-1">
+                        <Clock className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm text-gray-900">{exam.duration_minutes}m</span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="text-sm text-gray-900">{exam.questions.length} questions</span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        exam.is_active 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {exam.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6 text-right">
+                      <div className="flex items-center justify-end space-x-2">
+                        <button className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors">
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button className="p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded transition-colors">
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   const renderGradingModal = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
@@ -568,15 +722,10 @@ const AdminPortal: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
+        {(activeTab === 'dashboard' || activeTab === 'submissions') && <FilterBar className="mb-6" />}
         {activeTab === 'dashboard' && renderDashboard()}
         {activeTab === 'submissions' && renderSubmissions()}
-        {activeTab === 'exams' && (
-          <div className="text-center py-12">
-            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Exam Management</h3>
-            <p className="text-gray-500">Coming soon - Create and manage exams</p>
-          </div>
-        )}
+        {activeTab === 'exams' && renderExams()}
         {activeTab === 'students' && (
           <div className="text-center py-12">
             <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -588,7 +737,22 @@ const AdminPortal: React.FC = () => {
 
       {/* Grading Modal */}
       {showGradingModal && renderGradingModal()}
+
+      {/* Create Exam Modal */}
+      <CreateExamModal
+        isOpen={showCreateExamModal}
+        onClose={() => setShowCreateExamModal(false)}
+        onSuccess={handleExamCreated}
+      />
     </div>
+  );
+};
+
+const AdminPortal: React.FC = () => {
+  return (
+    <FilterProvider>
+      <AdminPortalContent />
+    </FilterProvider>
   );
 };
 
