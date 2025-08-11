@@ -11,6 +11,7 @@ import Results from './components/Results/Results';
 import Students from './components/Students/Students';
 import StudentBoard from './components/Board/StudentBoard';
 import StudentPortal from './components/Student/StudentPortal';
+import AdminPortal from './components/Admin/AdminPortal';
 import { LogOut } from 'lucide-react';
 
 const AppContent: React.FC = () => {
@@ -41,6 +42,11 @@ const AppContent: React.FC = () => {
   // Redirect students to a different interface (for now, show message)
   if (profile.role === 'student') {
     return <StudentPortal />;
+  }
+
+  // Show new admin portal
+  if (profile.role === 'admin') {
+    return <AdminPortal />;
   }
 
   const renderContent = () => {
