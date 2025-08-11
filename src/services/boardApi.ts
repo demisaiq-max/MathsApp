@@ -8,6 +8,7 @@ export interface Announcement {
   title: string;
   content: string;
   priority: 'low' | 'normal' | 'high' | 'urgent';
+  gradeLevel?: number;
   createdAt: string;
   updatedAt: string;
   likesCount: number;
@@ -25,6 +26,7 @@ export interface QAPost {
   postType: 'question' | 'answer';
   parentId?: string;
   isResolved: boolean;
+  gradeLevel?: number;
   createdAt: string;
   updatedAt: string;
   likesCount: number;
@@ -87,6 +89,8 @@ export const boardApiService = {
       title: data.title,
       content: data.content,
       priority: data.priority,
+      gradeLevel: data.grade_level,
+      gradeLevel: data.grade_level,
       gradeLevel: data.grade_level,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
@@ -226,6 +230,7 @@ export const boardApiService = {
       postType: post.post_type,
       parentId: post.parent_id,
       isResolved: post.is_resolved,
+      gradeLevel: post.grade_level,
       createdAt: post.created_at,
       updatedAt: post.updated_at,
       likesCount: likeCounts[post.id] || 0,
@@ -241,6 +246,7 @@ export const boardApiService = {
         postType: answer.post_type,
         parentId: answer.parent_id,
         isResolved: answer.is_resolved,
+        gradeLevel: answer.grade_level,
         createdAt: answer.created_at,
         updatedAt: answer.updated_at,
         likesCount: 0,
@@ -295,6 +301,7 @@ export const boardApiService = {
       postType: data.post_type,
       parentId: data.parent_id,
       isResolved: data.is_resolved,
+      gradeLevel: data.grade_level,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
       likesCount: 0,

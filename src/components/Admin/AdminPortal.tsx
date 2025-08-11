@@ -28,9 +28,14 @@ import {
   Award,
   BookOpen,
   LogOut,
-  MessageSquare
+  MessageSquare,
+  Heart,
+  MessageCircle,
+  Send,
+  X
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { boardApiService } from '../../services/boardApiService';
 
 interface AnswerSheetUpload {
   id: string;
@@ -49,6 +54,49 @@ interface ExamStats {
   activeExams: number;
   avgScore: number;
   pendingReviews: number;
+}
+
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  gradeLevel: number | null;
+  authorName: string;
+  createdAt: string;
+  likesCount: number;
+  commentsCount: number;
+  isLiked: boolean;
+}
+
+interface QAPost {
+  id: string;
+  title: string;
+  content: string;
+  gradeLevel: number | null;
+  authorName: string;
+  createdAt: string;
+  likesCount: number;
+  commentsCount: number;
+  isLiked: boolean;
+  isResolved: boolean;
+  answers?: Answer[];
+}
+
+interface Answer {
+  id: string;
+  content: string;
+  authorName: string;
+  authorInitials: string;
+  createdAt: string;
+}
+
+interface Comment {
+  id: string;
+  content: string;
+  authorName: string;
+  authorInitials: string;
+  createdAt: string;
 }
 
 const AdminPortalContent: React.FC = () => {
@@ -72,6 +120,16 @@ const AdminPortalContent: React.FC = () => {
   const [newComment, setNewComment] = useState('');
   const [gradingData, setGradingData] = useState({ grade: '', feedback: '' });
   const [studentTab, setStudentTab] = useState('announcements');
+  const [newAnnouncement, setNewAnnouncement] = useState({
+    title: '',
+    content: '',
+    priority: 'normal' as 'low' | 'normal' | 'high' | 'urgent',
+    gradeLevel: null as number | null
+  });
+  const [gradeFilter, setGradeFilter] = useState<number | null>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [qaPosts, setQAPosts] = useState<QAPost[]>([]);
+  const [comments, setComments] = useState<{ [key: string]: Comment[] }>({});
 
   useEffect(() => {
     fetchData();
@@ -174,28 +232,378 @@ const AdminPortalContent: React.FC = () => {
   };
 
   const fetchAnnouncements = async () => {
-    // Mock function - implement actual API call
-    console.log('Fetching announcements...');
+    try {
+      const data = await boardApiService.getAnnouncements(gradeFilter || undefined);
+      setAnnouncements(data);
+    } catch (error) {
+      console.error('Error fetching announcements:', error);
+    }
   };
 
   const fetchQAPosts = async () => {
-    // Mock function - implement actual API call
-    console.log('Fetching Q&A posts...');
+    try {
+      const data = await boardApiService.getQAPosts(gradeFilter || undefined);
+      setQAPosts(data);
+    } catch (error) {
+      console.error('Error fetching Q&A posts:', error);
+    }
+  };
+
+  const handleCreateAnnouncement = async () => {
+    if (!newAnnouncement.title.trim() || !newAnnouncement.content.trim()) return;
+
+    try {
+      await boardApiService.createAnnouncement({
+        title: newAnnouncement.title,
+        content: newAnnouncement.content,
+        priority: newAnnouncement.priority,
+        gradeLevel: newAnnouncement.gradeLevel
+      });
+      setShowNewAnnouncement(false);
+      setNewAnnouncement({ title: '', content: '', priority: 'normal', gradeLevel: null });
+      fetchAnnouncements();
+    } catch (error) {
+      console.error('Error creating announcement:', error);
+    }
+  };
+
+  const handleToggleLike = async (postId: string, postType: 'announcement' | 'qa_post') => {
+    try {
+      await boardApiService.toggleLike(postId, postType);
+      if (postType === 'announcement') {
+        fetchAnnouncements();
+      } else {
+        fetchQAPosts();
+      }
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    }
+  };
+
+  const handleAddComment = async (postId: string, postType: 'announcement' | 'qa_post') => {
+    if (!newComment.trim()) return;
+
+    try {
+      await boardApiService.addComment(postId, postType, newComment);
+      setNewComment('');
+      fetchComments(postId, postType);
+      if (postType === 'announcement') {
+        fetchAnnouncements();
+      } else {
+        fetchQAPosts();
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
+  };
+
+  const fetchComments = async (postId: string, postType: 'announcement' | 'qa_post') => {
+    try {
+      const data = await boardApiService.getPostComments(postId, postType);
+      setComments(prev => ({ ...prev, [postId]: data }));
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'high':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'normal':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'low':
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
   };
 
   const renderAnnouncements = () => (
-    <div className="text-center py-12">
-      <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-      <h3 className="text-lg font-medium text-gray-900 mb-2">Announcements</h3>
-      <p className="text-gray-500">Coming soon - Manage announcements</p>
+    <div className="space-y-6">
+      {/* Grade Filter */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <label className="text-sm font-medium text-gray-700">Filter by Grade:</label>
+          <select
+            value={gradeFilter || ''}
+            onChange={(e) => setGradeFilter(e.target.value ? parseInt(e.target.value) : null)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">All Grades</option>
+            {[5, 6, 7, 8, 9, 10, 11, 12].map(grade => (
+              <option key={grade} value={grade}>Grade {grade}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Announcements List */}
+      <div className="space-y-4">
+        {announcements.length === 0 ? (
+          <div className="text-center py-12">
+            <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Announcements</h3>
+            <p className="text-gray-500">Create your first announcement to get started</p>
+          </div>
+        ) : (
+          announcements.map((announcement) => (
+            <div key={announcement.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900">{announcement.title}</h3>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPriorityColor(announcement.priority)}`}>
+                      {announcement.priority}
+                    </span>
+                    {announcement.gradeLevel && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Grade {announcement.gradeLevel}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-gray-700 mb-3">{announcement.content}</p>
+                  <div className="flex items-center space-x-4 text-sm text-gray-500">
+                    <span>By {announcement.authorName}</span>
+                    <span>{new Date(announcement.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={() => handleToggleLike(announcement.id, 'announcement')}
+                    className={`flex items-center space-x-1 px-3 py-1 rounded-lg transition-colors ${
+                      announcement.isLiked 
+                        ? 'bg-red-50 text-red-600 hover:bg-red-100' 
+                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Heart className={`h-4 w-4 ${announcement.isLiked ? 'fill-current' : ''}`} />
+                    <span>{announcement.likesCount}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (showComments === announcement.id) {
+                        setShowComments(null);
+                      } else {
+                        setShowComments(announcement.id);
+                        fetchComments(announcement.id, 'announcement');
+                      }
+                    }}
+                    className="flex items-center space-x-1 px-3 py-1 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    <span>{announcement.commentsCount}</span>
+                  </button>
+                </div>
+              </div>
+
+              {showComments === announcement.id && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="space-y-3 mb-4">
+                    {comments[announcement.id]?.map((comment) => (
+                      <div key={comment.id} className="flex space-x-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-medium text-blue-600">
+                            {comment.authorInitials}
+                          </span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <p className="text-sm font-medium text-gray-900 mb-1">{comment.authorName}</p>
+                            <p className="text-sm text-gray-700">{comment.content}</p>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(comment.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Add a comment..."
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      onKeyPress={(e) => e.key === 'Enter' && handleAddComment(announcement.id, 'announcement')}
+                    />
+                    <button
+                      onClick={() => handleAddComment(announcement.id, 'announcement')}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Send className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 
   const renderQA = () => (
-    <div className="text-center py-12">
-      <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-      <h3 className="text-lg font-medium text-gray-900 mb-2">Q&A Forum</h3>
-      <p className="text-gray-500">Coming soon - Manage Q&A forum</p>
+    <div className="space-y-6">
+      {/* Grade Filter */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <label className="text-sm font-medium text-gray-700">Filter by Grade:</label>
+          <select
+            value={gradeFilter || ''}
+            onChange={(e) => setGradeFilter(e.target.value ? parseInt(e.target.value) : null)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">All Grades</option>
+            {[5, 6, 7, 8, 9, 10, 11, 12].map(grade => (
+              <option key={grade} value={grade}>Grade {grade}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Q&A Posts List */}
+      <div className="space-y-4">
+        {qaPosts.length === 0 ? (
+          <div className="text-center py-12">
+            <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Q&A Posts</h3>
+            <p className="text-gray-500">Students haven't posted any questions yet</p>
+          </div>
+        ) : (
+          qaPosts.map((post) => (
+            <div key={post.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900">{post.title}</h3>
+                    {post.isResolved && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Resolved
+                      </span>
+                    )}
+                    {post.gradeLevel && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        Grade {post.gradeLevel}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-gray-700 mb-3">{post.content}</p>
+                  <div className="flex items-center space-x-4 text-sm text-gray-500">
+                    <span>By {post.authorName}</span>
+                    <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+                    {post.answers && post.answers.length > 0 && (
+                      <span>{post.answers.length} answer{post.answers.length !== 1 ? 's' : ''}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={() => handleToggleLike(post.id, 'qa_post')}
+                    className={`flex items-center space-x-1 px-3 py-1 rounded-lg transition-colors ${
+                      post.isLiked 
+                        ? 'bg-red-50 text-red-600 hover:bg-red-100' 
+                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Heart className={`h-4 w-4 ${post.isLiked ? 'fill-current' : ''}`} />
+                    <span>{post.likesCount}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (showComments === post.id) {
+                        setShowComments(null);
+                      } else {
+                        setShowComments(post.id);
+                        fetchComments(post.id, 'qa_post');
+                      }
+                    }}
+                    className="flex items-center space-x-1 px-3 py-1 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    <span>{post.commentsCount}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Answers */}
+              {post.answers && post.answers.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <h4 className="font-medium text-gray-900 mb-3">Answers</h4>
+                  <div className="space-y-3">
+                    {post.answers.map((answer) => (
+                      <div key={answer.id} className="bg-gray-50 rounded-lg p-4">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-xs font-medium text-blue-600">
+                              {answer.authorInitials}
+                            </span>
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">{answer.authorName}</span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(answer.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700">{answer.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {showComments === post.id && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="space-y-3 mb-4">
+                    {comments[post.id]?.map((comment) => (
+                      <div key={comment.id} className="flex space-x-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-medium text-blue-600">
+                            {comment.authorInitials}
+                          </span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="bg-gray-50 rounded-lg p-3">
+                            <p className="text-sm font-medium text-gray-900 mb-1">{comment.authorName}</p>
+                            <p className="text-sm text-gray-700">{comment.content}</p>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(comment.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Add a comment..."
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      onKeyPress={(e) => e.key === 'Enter' && handleAddComment(post.id, 'qa_post')}
+                    />
+                    <button
+                      onClick={() => handleAddComment(post.id, 'qa_post')}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Send className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 
@@ -864,6 +1272,87 @@ const AdminPortalContent: React.FC = () => {
         {activeTab === 'announcements' && renderAnnouncements()}
         {activeTab === 'qa' && renderQA()}
       </main>
+
+      {/* New Announcement Modal */}
+      {showNewAnnouncement && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Create Announcement</h3>
+              <button
+                onClick={() => setShowNewAnnouncement(false)}
+                className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
+                <input
+                  type="text"
+                  value={newAnnouncement.title}
+                  onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter announcement title"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
+                <textarea
+                  value={newAnnouncement.content}
+                  onChange={(e) => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={4}
+                  placeholder="Enter announcement content"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                  <select
+                    value={newAnnouncement.priority}
+                    onChange={(e) => setNewAnnouncement({ ...newAnnouncement, priority: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="low">Low</option>
+                    <option value="normal">Normal</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Grade Level</label>
+                  <select
+                    value={newAnnouncement.gradeLevel || ''}
+                    onChange={(e) => setNewAnnouncement({ ...newAnnouncement, gradeLevel: e.target.value ? parseInt(e.target.value) : null })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">All Grades</option>
+                    {[5, 6, 7, 8, 9, 10, 11, 12].map(grade => (
+                      <option key={grade} value={grade}>Grade {grade}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="flex space-x-3 pt-4">
+                <button
+                  onClick={handleCreateAnnouncement}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Create Announcement
+                </button>
+                <button
+                  onClick={() => setShowNewAnnouncement(false)}
+                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Grading Modal */}
       {showGradingModal && renderGradingModal()}
