@@ -46,6 +46,53 @@ export interface PostComment {
 }
 
 export const boardApiService = {
+  // Create a new announcement (admin only)
+  createAnnouncement: async (announcement: {
+    title: string;
+    content: string;
+    priority: 'low' | 'normal' | 'high' | 'urgent';
+  }): Promise<Announcement> => {
+    const user = (await supabase.auth.getUser()).data.user;
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user?.id)
+      .single();
+    
+    const authorName = profile?.full_name || 'Administrator';
+    const authorInitials = authorName.split(' ').map(n => n[0]).join('').toUpperCase();
+    
+    const { data, error } = await supabase
+      .from('announcements')
+      .insert({
+        author_id: user?.id,
+        author_name: authorName,
+        author_initials: authorInitials,
+        title: announcement.title,
+        content: announcement.content,
+        priority: announcement.priority
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    return {
+      id: data.id,
+      authorId: data.author_id,
+      authorName: data.author_name,
+      authorInitials: data.author_initials,
+      title: data.title,
+      content: data.content,
+      priority: data.priority,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      likesCount: 0,
+      commentsCount: 0,
+      isLiked: false
+    };
+  },
+
   // Get all announcements with likes and comments count
   getAnnouncements: async (): Promise<Announcement[]> => {
     const { data, error } = await supabase
