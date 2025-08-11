@@ -484,27 +484,26 @@ const AdminPortal: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 min-w-0 flex-1">
               <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
                 <BarChart3 className="h-6 w-6 text-white" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">MathTrack Admin</h1>
-                <p className="text-xs text-gray-500">Administration Dashboard</p>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">MathTrack Admin</h1>
+                <p className="text-xs text-gray-500 hidden sm:block">Administration Dashboard</p>
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <button className="hidden md:flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <Bell className="h-4 w-4" />
-                <span className="text-sm">Notifications</span>
-              </button>
-              <div className="flex items-center space-x-3">
-                <div className="text-right">
+            <div className="flex items-center space-x-2 sm:space-x-4 flex-shrink-0">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="text-right hidden sm:block">
                   <p className="text-sm font-medium text-gray-900">Administrator</p>
                   <p className="text-xs text-gray-500">{user?.email}</p>
+                </div>
+                <div className="text-right sm:hidden">
+                  <p className="text-xs font-medium text-gray-900">Admin</p>
                 </div>
                 <button
                   onClick={signOut}
@@ -521,11 +520,11 @@ const AdminPortal: React.FC = () => {
 
       {/* Navigation */}
       <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+          <div className="flex space-x-4 sm:space-x-8 overflow-x-auto">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
                 activeTab === 'dashboard'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -535,7 +534,7 @@ const AdminPortal: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('submissions')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
                 activeTab === 'submissions'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -545,7 +544,7 @@ const AdminPortal: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('exams')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
                 activeTab === 'exams'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -555,7 +554,7 @@ const AdminPortal: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('students')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap ${
                 activeTab === 'students'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -568,7 +567,7 @@ const AdminPortal: React.FC = () => {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
         {activeTab === 'dashboard' && renderDashboard()}
         {activeTab === 'submissions' && renderSubmissions()}
         {activeTab === 'exams' && (
