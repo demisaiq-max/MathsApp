@@ -51,6 +51,7 @@ export const boardApiService = {
     title: string;
     content: string;
     priority: 'low' | 'normal' | 'high' | 'urgent';
+    gradeLevel?: number;
   }): Promise<Announcement> => {
     const user = (await supabase.auth.getUser()).data.user;
     const { data: profile } = await supabase
@@ -70,7 +71,8 @@ export const boardApiService = {
         author_initials: authorInitials,
         title: announcement.title,
         content: announcement.content,
-        priority: announcement.priority
+        priority: announcement.priority,
+        grade_level: announcement.gradeLevel
       })
       .select()
       .single();
@@ -85,6 +87,7 @@ export const boardApiService = {
       title: data.title,
       content: data.content,
       priority: data.priority,
+      gradeLevel: data.grade_level,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
       likesCount: 0,
@@ -94,11 +97,18 @@ export const boardApiService = {
   },
 
   // Get all announcements with likes and comments count
-  getAnnouncements: async (): Promise<Announcement[]> => {
-    const { data, error } = await supabase
+  getAnnouncements: async (gradeLevel?: number): Promise<Announcement[]> => {
+    let query = supabase
       .from('announcements')
       .select('*')
       .order('created_at', { ascending: false });
+    
+    // Filter by grade level if specified
+    if (gradeLevel) {
+      query = query.or(`grade_level.is.null,grade_level.eq.${gradeLevel}`);
+    }
+    
+    const { data, error } = await query;
     
     if (error) throw error;
     
@@ -113,6 +123,10 @@ export const boardApiService = {
       .from('post_comments')
       .select('post_id')
       .eq('post_type', 'announcement');
+    
+    if (gradeLevel) {
+      query = query.or(`grade_level.is.null,grade_level.eq.${gradeLevel}`);
+    }
     
     // Count likes and comments by post_id
     const likeCounts = (allLikes || []).reduce((acc, like) => {
@@ -156,10 +170,7 @@ export const boardApiService = {
       .from('qa_posts')
       .select(`
         *,
-        answers:qa_posts!parent_id(*)
-      `)
-      .is('parent_id', null)
-      .order('created_at', { ascending: false });
+    const { data, error } = await query;
     
     if (error) throw error;
     
@@ -203,6 +214,7 @@ export const boardApiService = {
       title: post.title,
       content: post.content,
       postType: post.post_type,
+      gradeLevel: announcement.grade_level,
       parentId: post.parent_id,
       isResolved: post.is_resolved,
       createdAt: post.created_at,
@@ -245,9 +257,21 @@ export const boardApiService = {
     
     const authorName = profile?.full_name || 'Anonymous';
     const authorInitials = authorName.split(' ').map(n => n[0]).join('').toUpperCase();
-    
-    const { data, error } = await supabase
+  getQAPosts: async (gradeLevel?: number): Promise<QAPost[]> => {
+    let query = supabase
       .from('qa_posts')
+      .select(`
+        *,
+        answers:qa_posts!parent_id(*)
+      `)
+      .is('parent_id', null)
+      .order('created_at', { ascending: false });
+    
+    // Filter by grade level if specified (for students)
+    if (gradeLevel) {
+      query = query.or(`grade_level.is.null,grade_level.eq.${gradeLevel}`);
+    }
+    
       .insert({
         author_id: user?.id,
         author_name: authorName,
@@ -275,12 +299,7 @@ export const boardApiService = {
       createdAt: data.created_at,
       updatedAt: data.updated_at,
       likesCount: 0,
-      commentsCount: 0,
-      isLiked: false
-    };
-  },
-
-  // Toggle like on a post
+    const { data, error } = await query;
   toggleLike: async (postId: string, postType: 'announcement' | 'qa_post'): Promise<boolean> => {
     const user = (await supabase.auth.getUser()).data.user;
     
@@ -317,6 +336,7 @@ export const boardApiService = {
     }
   },
 
+      gradeLevel: post.grade_level,
   // Get comments for a post
   getPostComments: async (postId: string, postType: 'announcement' | 'qa_post'): Promise<PostComment[]> => {
     const { data, error } = await supabase
@@ -332,6 +352,7 @@ export const boardApiService = {
       id: comment.id,
       postId: comment.post_id,
       postType: comment.post_type,
+        gradeLevel: answer.grade_level,
       authorId: comment.author_id,
       authorName: comment.author_name,
       authorInitials: comment.author_initials,
@@ -347,6 +368,7 @@ export const boardApiService = {
     const { data: profile } = await supabase
       .from('profiles')
       .select('full_name')
+    gradeLevel?: number;
       .eq('id', user?.id)
       .single();
     
@@ -362,7 +384,8 @@ export const boardApiService = {
         author_name: authorName,
         author_initials: authorInitials,
         content: content
-      })
+        parent_id: post.parentId,
+        grade_level: post.gradeLevel
       .select()
       .single();
     
@@ -376,6 +399,7 @@ export const boardApiService = {
       authorName: data.author_name,
       authorInitials: data.author_initials,
       content: data.content,
+      gradeLevel: data.grade_level,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };

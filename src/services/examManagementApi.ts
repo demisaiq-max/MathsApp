@@ -1,311 +1,417 @@
 import { supabase } from '../lib/supabase';
 
-export interface ExamQuestion {
-  id?: string;
-  question_number: number;
-  question_type: 'multiple_choice' | 'true_false' | 'short_answer' | 'essay';
-  question_text: string;
-  options?: string[];
-  correct_answer: string;
-  points: number;
-}
-
-export interface CreateExamData {
-  title: string;
-  grade_level: number;
-  subject: string;
-  duration_minutes: number;
-  start_time: string;
-  end_time: string;
-  questions: ExamQuestion[];
-}
-
-export interface ExamWithQuestions {
+export interface Announcement {
   id: string;
+  authorId: string;
+  authorName: string;
+  authorInitials: string;
   title: string;
-  grade_level: number;
-  subject: string;
-  duration_minutes: number;
-  start_time: string;
-  end_time: string;
-  status: string;
-  is_active: boolean;
-  created_by: string;
-  created_at: string;
-  questions: ExamQuestion[];
+  content: string;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  createdAt: string;
+  updatedAt: string;
+  likesCount: number;
+  commentsCount: number;
+  isLiked: boolean;
 }
 
-export const examManagementApi = {
-  // Create a new exam with questions
-  createExam: async (examData: CreateExamData): Promise<string> => {
+export interface QAPost {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorInitials: string;
+  title: string;
+  content: string;
+  postType: 'question' | 'answer';
+  parentId?: string;
+  isResolved: boolean;
+  createdAt: string;
+  updatedAt: string;
+  likesCount: number;
+  commentsCount: number;
+  isLiked: boolean;
+  answers?: QAPost[];
+}
+
+export interface PostComment {
+  id: string;
+  postId: string;
+  postType: 'announcement' | 'qa_post';
+  authorId: string;
+  authorName: string;
+  authorInitials: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const boardApiService = {
+  // Create a new announcement (admin only)
+  createAnnouncement: async (announcement: {
+    title: string;
+    content: string;
+    priority: 'low' | 'normal' | 'high' | 'urgent';
+    gradeLevel?: number;
+    gradeLevel?: number;
+  }): Promise<Announcement> => {
     const user = (await supabase.auth.getUser()).data.user;
-    if (!user) throw new Error('User not authenticated');
-
-    // Determine status based on start time
-    const now = new Date();
-    const startTime = new Date(examData.start_time);
-    const status = startTime > now ? 'scheduled' : 'active';
-
-    // Start a transaction
-    const { data: exam, error: examError } = await supabase
-      .from('exams')
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user?.id)
+      .single();
+    
+    const authorName = profile?.full_name || 'Administrator';
+    const authorInitials = authorName.split(' ').map(n => n[0]).join('').toUpperCase();
+    
+    const { data, error } = await supabase
+      .from('announcements')
       .insert({
-        title: examData.title,
-        grade_level: examData.grade_level,
-        subject: examData.subject,
-        duration_minutes: examData.duration_minutes,
-        start_time: examData.start_time,
-        end_time: examData.end_time,
-        status: status,
-        is_active: true,
-        created_by: user.id
+        author_id: user?.id,
+        author_name: authorName,
+        author_initials: authorInitials,
+        title: announcement.title,
+        content: announcement.content,
+        priority: announcement.priority,
+        grade_level: announcement.gradeLevel
+        grade_level: announcement.gradeLevel
       })
       .select()
       .single();
-
-    if (examError) throw examError;
-
-    // Insert questions
-    if (examData.questions.length > 0) {
-      const questionsToInsert = examData.questions.map(question => {
-        // Ensure question_type matches database constraint exactly
-        let questionType = question.question_type;
-        if (questionType === 'mcq') questionType = 'multiple_choice';
-        if (questionType === 'tf') questionType = 'true_false';
-        
-        return {
-        exam_id: exam.id,
-        question_number: question.question_number,
-        question_type: questionType,
-        question_text: question.question_text,
-        options: question.question_type === 'multiple_choice' && question.options ? 
-          JSON.stringify(question.options) : null,
-        correct_answer: question.correct_answer,
-        points: question.points || 1
-        };
-      });
-
-      const { error: questionsError } = await supabase
-        .from('exam_questions')
-        .insert(questionsToInsert);
-
-      if (questionsError) throw questionsError;
-    }
-
-    return exam.id;
-  },
-
-  // Get exams with filtering
-  getExams: async (gradeLevel?: string, subject?: string): Promise<ExamWithQuestions[]> => {
-    let query = supabase
-      .from('exams')
-      .select(`
-        *,
-        exam_questions(*)
-      `)
-      .order('created_at', { ascending: false });
-
-    if (gradeLevel) {
-      query = query.eq('grade_level', parseInt(gradeLevel));
-    }
-
-    if (subject) {
-      query = query.eq('subject', subject);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-
-    return data.map(exam => ({
-      id: exam.id,
-      title: exam.title,
-      grade_level: exam.grade_level,
-      subject: exam.subject,
-      duration_minutes: exam.duration_minutes,
-      start_time: exam.start_time,
-      end_time: exam.end_time,
-      status: exam.status || 'draft',
-      is_active: exam.is_active,
-      created_by: exam.created_by,
-      created_at: exam.created_at,
-      questions: exam.exam_questions || []
-    }));
-  },
-
-  // Get exams for specific student grade
-  getStudentExams: async (studentGrade: number): Promise<ExamWithQuestions[]> => {
-    const { data, error } = await supabase
-      .from('exams')
-      .select(`
-        *,
-        exam_questions(*)
-      `)
-      .eq('grade_level', studentGrade)
-      .in('status', ['scheduled', 'active'])
-      .order('start_time', { ascending: true });
-
-    if (error) throw error;
-
-    return data.map(exam => ({
-      id: exam.id,
-      title: exam.title,
-      grade_level: exam.grade_level,
-      subject: exam.subject,
-      duration_minutes: exam.duration_minutes,
-      start_time: exam.start_time,
-      end_time: exam.end_time,
-      status: exam.status || 'draft',
-      is_active: exam.is_active,
-      created_by: exam.created_by,
-      created_at: exam.created_at,
-      questions: exam.exam_questions || []
-    }));
-  },
-
-  // Get upcoming exams
-  getUpcomingExams: async (): Promise<ExamWithQuestions[]> => {
-    const now = new Date().toISOString();
-    const { data, error } = await supabase
-      .from('exams')
-      .select(`
-        *,
-        exam_questions(*)
-      `)
-      .eq('status', 'scheduled')
-      .gt('start_time', now)
-      .order('start_time', { ascending: true });
-
-    if (error) throw error;
-
-    return data.map(exam => ({
-      id: exam.id,
-      title: exam.title,
-      grade_level: exam.grade_level,
-      subject: exam.subject,
-      duration_minutes: exam.duration_minutes,
-      start_time: exam.start_time,
-      end_time: exam.end_time,
-      status: exam.status || 'draft',
-      is_active: exam.is_active,
-      created_by: exam.created_by,
-      created_at: exam.created_at,
-      questions: exam.exam_questions || []
-    }));
-  },
-
-  // Update exam statuses based on time
-  updateExamStatuses: async (): Promise<void> => {
-    const now = new Date().toISOString();
     
-    // Update scheduled exams that should be active
-    await supabase
-      .from('exams')
-      .update({ status: 'active' })
-      .eq('status', 'scheduled')
-      .lte('start_time', now)
-      .gt('end_time', now);
-
-    // Update active exams that should be completed
-    await supabase
-      .from('exams')
-      .update({ status: 'completed' })
-      .eq('status', 'active')
-      .lte('end_time', now);
-  },
-
-  // Get single exam with questions
-  getExamById: async (examId: string): Promise<ExamWithQuestions | null> => {
-    const { data, error } = await supabase
-      .from('exams')
-      .select(`
-        *,
-        exam_questions(*)
-      `)
-      .eq('id', examId)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw error;
-    }
-
+    if (error) throw error;
+    
     return {
       id: data.id,
+      authorId: data.author_id,
+      authorName: data.author_name,
+      authorInitials: data.author_initials,
       title: data.title,
-      grade_level: data.grade_level,
-      subject: data.subject,
-      duration_minutes: data.duration_minutes,
-      start_time: data.start_time,
-      end_time: data.end_time,
-      status: data.status || 'draft',
-      is_active: data.is_active,
-      created_by: data.created_by,
-      created_at: data.created_at,
-      questions: data.exam_questions || []
+      content: data.content,
+      priority: data.priority,
+      gradeLevel: data.grade_level,
+      gradeLevel: data.grade_level,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      likesCount: 0,
+      commentsCount: 0,
+      isLiked: false
     };
   },
 
-  // Update exam
-  updateExam: async (examId: string, updates: Partial<CreateExamData>): Promise<void> => {
-    const { error } = await supabase
-      .from('exams')
-      .update({
-        title: updates.title,
-        grade_level: updates.grade_level,
-        subject: updates.subject,
-        duration_minutes: updates.duration_minutes,
-        start_time: updates.start_time,
-        end_time: updates.end_time,
-      })
-      .eq('id', examId);
-
+  // Get all announcements with likes and comments count
+  getAnnouncements: async (gradeLevel?: number): Promise<Announcement[]> => {
+    let query = supabase
+      .from('announcements')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    // Filter by grade level if specified
+    if (gradeLevel) {
+      query = query.or(`grade_level.is.null,grade_level.eq.${gradeLevel}`);
+    }
+    
+    const { data, error } = await query;
+    
+    // Filter by grade level if specified
+    if (gradeLevel) {
+      query = query.or(`grade_level.is.null,grade_level.eq.${gradeLevel}`);
+    }
+    
+    const { data, error } = await query;
+    
     if (error) throw error;
+    
+    // Get all likes for announcements
+    const { data: allLikes } = await supabase
+      .from('post_likes')
+      .select('post_id')
+      .eq('post_type', 'announcement');
+    
+    // Get all comments for announcements
+    const { data: allComments } = await supabase
+      .from('post_comments')
+      .select('post_id')
+      .eq('post_type', 'announcement');
+    
+    if (gradeLevel) {
+      query = query.or(`grade_level.is.null,grade_level.eq.${gradeLevel}`);
+    }
+    
+    // Count likes and comments by post_id
+    const likeCounts = (allLikes || []).reduce((acc, like) => {
+      acc[like.post_id] = (acc[like.post_id] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const commentCounts = (allComments || []).reduce((acc, comment) => {
+      acc[comment.post_id] = (acc[comment.post_id] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    // Get current user's likes
+    const { data: userLikes } = await supabase
+      .from('post_likes')
+      .select('post_id')
+      .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+      .eq('post_type', 'announcement');
+    
+    const likedPostIds = new Set(userLikes?.map(like => like.post_id) || []);
+    
+    return data.map(announcement => ({
+      id: announcement.id,
+      authorId: announcement.author_id,
+      authorName: announcement.author_name,
+      authorInitials: announcement.author_initials,
+      title: announcement.title,
+      content: announcement.content,
+      priority: announcement.priority,
+      createdAt: announcement.created_at,
+      updatedAt: announcement.updated_at,
+      likesCount: likeCounts[announcement.id] || 0,
+      commentsCount: commentCounts[announcement.id] || 0,
+      isLiked: likedPostIds.has(announcement.id)
+    }));
+  },
 
-    // Update questions if provided
-    if (updates.questions) {
-      // Delete existing questions
-      await supabase
-        .from('exam_questions')
+  // Get all Q&A posts with answers
+  getQAPosts: async (): Promise<QAPost[]> => {
+    const { data, error } = await supabase
+      .from('qa_posts')
+      .select(`
+        *,
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    
+    // Get all likes for qa_posts
+    const { data: allLikes } = await supabase
+      .from('post_likes')
+      .select('post_id')
+      .eq('post_type', 'qa_post');
+    
+    // Get all comments for qa_posts
+    const { data: allComments } = await supabase
+      .from('post_comments')
+      .select('post_id')
+      .eq('post_type', 'qa_post');
+    
+    // Count likes and comments by post_id
+    const likeCounts = (allLikes || []).reduce((acc, like) => {
+      acc[like.post_id] = (acc[like.post_id] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    const commentCounts = (allComments || []).reduce((acc, comment) => {
+      acc[comment.post_id] = (acc[comment.post_id] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    // Get current user's likes
+    const { data: userLikes } = await supabase
+      .from('post_likes')
+      .select('post_id')
+      .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+      .eq('post_type', 'qa_post');
+    
+    const likedPostIds = new Set(userLikes?.map(like => like.post_id) || []);
+    
+    return data.map(post => ({
+      id: post.id,
+      authorId: post.author_id,
+      authorName: post.author_name,
+      authorInitials: post.author_initials,
+      title: post.title,
+      content: post.content,
+      postType: post.post_type,
+      gradeLevel: announcement.grade_level,
+      parentId: post.parent_id,
+      isResolved: post.is_resolved,
+      createdAt: post.created_at,
+      updatedAt: post.updated_at,
+      likesCount: likeCounts[post.id] || 0,
+      commentsCount: commentCounts[post.id] || 0,
+      isLiked: likedPostIds.has(post.id),
+      answers: post.answers?.map((answer: any) => ({
+        id: answer.id,
+        authorId: answer.author_id,
+        authorName: answer.author_name,
+        authorInitials: answer.author_initials,
+        title: answer.title,
+        content: answer.content,
+        postType: answer.post_type,
+        parentId: answer.parent_id,
+        isResolved: answer.is_resolved,
+        createdAt: answer.created_at,
+        updatedAt: answer.updated_at,
+        likesCount: 0,
+        commentsCount: 0,
+        isLiked: false
+      })) || []
+    }));
+  },
+
+  // Create a new Q&A post
+  createQAPost: async (post: {
+    title: string;
+    content: string;
+    postType: 'question' | 'answer';
+    parentId?: string;
+  }): Promise<QAPost> => {
+    const user = (await supabase.auth.getUser()).data.user;
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user?.id)
+      .single();
+    
+    const authorName = profile?.full_name || 'Anonymous';
+    const authorInitials = authorName.split(' ').map(n => n[0]).join('').toUpperCase();
+  getQAPosts: async (gradeLevel?: number): Promise<QAPost[]> => {
+    let query = supabase
+      .from('qa_posts')
+      .select(`
+        *,
+        answers:qa_posts!parent_id(*)
+      `)
+      .is('parent_id', null)
+      .order('created_at', { ascending: false });
+    
+    // Filter by grade level if specified (for students)
+    if (gradeLevel) {
+      query = query.or(`grade_level.is.null,grade_level.eq.${gradeLevel}`);
+    }
+    
+      .insert({
+        author_id: user?.id,
+        author_name: authorName,
+        author_initials: authorInitials,
+        title: post.title,
+        content: post.content,
+        post_type: post.postType,
+        parent_id: post.parentId
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    return {
+      id: data.id,
+      authorId: data.author_id,
+      authorName: data.author_name,
+      authorInitials: data.author_initials,
+      title: data.title,
+      content: data.content,
+      postType: data.post_type,
+      parentId: data.parent_id,
+      isResolved: data.is_resolved,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      likesCount: 0,
+    const { data, error } = await query;
+  toggleLike: async (postId: string, postType: 'announcement' | 'qa_post'): Promise<boolean> => {
+    const user = (await supabase.auth.getUser()).data.user;
+    
+    // Check if already liked
+    const { data: existingLike } = await supabase
+      .from('post_likes')
+      .select('id')
+      .eq('user_id', user?.id)
+      .eq('post_id', postId)
+      .eq('post_type', postType)
+      .maybeSingle();
+    
+    if (existingLike) {
+      // Unlike
+      const { error } = await supabase
+        .from('post_likes')
         .delete()
-        .eq('exam_id', examId);
-
-      // Insert new questions
-      const questionsToInsert = updates.questions.map(question => ({
-        exam_id: examId,
-        question_number: question.question_number,
-        question_type: question.question_type,
-        question_text: question.question_text,
-        options: question.options ? JSON.stringify(question.options) : null,
-        correct_answer: question.correct_answer,
-        points: question.points
-      }));
-
-      const { error: questionsError } = await supabase
-        .from('exam_questions')
-        .insert(questionsToInsert);
-
-      if (questionsError) throw questionsError;
+        .eq('id', existingLike.id);
+      
+      if (error) throw error;
+      return false;
+    } else {
+      // Like
+      const { error } = await supabase
+        .from('post_likes')
+        .insert({
+          user_id: user?.id,
+          post_id: postId,
+          post_type: postType
+        });
+      
+      if (error) throw error;
+      return true;
     }
   },
 
-  // Delete exam
-  deleteExam: async (examId: string): Promise<void> => {
-    const { error } = await supabase
-      .from('exams')
-      .delete()
-      .eq('id', examId);
-
+      gradeLevel: post.grade_level,
+  // Get comments for a post
+  getPostComments: async (postId: string, postType: 'announcement' | 'qa_post'): Promise<PostComment[]> => {
+    const { data, error } = await supabase
+      .from('post_comments')
+      .select('*')
+      .eq('post_id', postId)
+      .eq('post_type', postType)
+      .order('created_at', { ascending: true });
+    
     if (error) throw error;
+    
+    return data.map(comment => ({
+      id: comment.id,
+      postId: comment.post_id,
+      postType: comment.post_type,
+        gradeLevel: answer.grade_level,
+      authorId: comment.author_id,
+      authorName: comment.author_name,
+      authorInitials: comment.author_initials,
+      content: comment.content,
+      createdAt: comment.created_at,
+      updatedAt: comment.updated_at
+    }));
   },
 
-  // Toggle exam active status
-  toggleExamStatus: async (examId: string, isActive: boolean): Promise<void> => {
-    const { error } = await supabase
-      .from('exams')
-      .update({ is_active: isActive })
-      .eq('id', examId);
-
+  // Add comment to a post
+  addComment: async (postId: string, postType: 'announcement' | 'qa_post', content: string): Promise<PostComment> => {
+    const user = (await supabase.auth.getUser()).data.user;
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+    gradeLevel?: number;
+      .eq('id', user?.id)
+      .single();
+    
+    const authorName = profile?.full_name || 'Anonymous';
+    const authorInitials = authorName.split(' ').map(n => n[0]).join('').toUpperCase();
+    
+    const { data, error } = await supabase
+      .from('post_comments')
+      .insert({
+        post_id: postId,
+        post_type: postType,
+        author_id: user?.id,
+        author_name: authorName,
+        author_initials: authorInitials,
+        content: content
+        parent_id: post.parentId,
+        grade_level: post.gradeLevel
+      .select()
+      .single();
+    
     if (error) throw error;
+    
+    return {
+      id: data.id,
+      postId: data.post_id,
+      postType: data.post_type,
+      authorId: data.author_id,
+      authorName: data.author_name,
+      authorInitials: data.author_initials,
+      content: data.content,
+      gradeLevel: data.grade_level,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
   }
 };
