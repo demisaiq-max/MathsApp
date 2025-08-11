@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  BookOpen, 
+  BookOpen,
   TrendingUp, 
-  Award, 
+  Trophy,
   Calendar, 
-  BarChart3, 
-  Target,
-  Clock,
-  Star,
-  LogOut,
-  Bell,
-  MessageSquare,
   Plus,
+  Home,
+  BarChart3,
+  MessageSquare,
+  User,
+  Bell,
+  LogOut,
   Heart,
   MessageCircle,
   Send,
@@ -206,127 +205,156 @@ const StudentPortal: React.FC = () => {
   };
 
   const renderDashboard = () => (
-    <div className="space-y-8">
+    <div className="min-h-screen bg-gray-50">
+      {/* Welcome Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6">
+        <h1 className="text-2xl font-bold mb-1">Welcome back, {profile?.full_name?.split(' ')[0] || 'Student'}!</h1>
+        <p className="opacity-90">Ready to check your latest scores?</p>
+      </div>
+
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 mb-1">Total Exams</p>
-              <p className="text-2xl font-bold text-gray-900">{progress.totalExams}</p>
+      <div className="p-4 space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 text-center">
+            <div className="flex items-center justify-center mb-2">
+              <TrendingUp className="h-5 w-5 text-blue-600 mr-2" />
+              <span className="text-sm text-gray-600">Latest</span>
             </div>
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <BookOpen className="h-6 w-6 text-blue-600" />
+            <div className="text-2xl font-bold">{progress.recentExams[0]?.score || 0}%</div>
+            <div className="text-sm text-gray-600">Last Exam Score</div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 text-center">
+            <div className="flex items-center justify-center mb-2">
+              <Trophy className="h-5 w-5 text-orange-600 mr-2" />
+              <span className="text-sm text-gray-600">Average</span>
             </div>
+            <div className="text-2xl font-bold">{progress.averageScore}%</div>
+            <div className="text-sm text-gray-600">Overall Average</div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 mb-1">Average Score</p>
-              <p className={`text-2xl font-bold ${getScoreColor(progress.averageScore)}`}>
-                {progress.averageScore}%
-              </p>
-            </div>
-            <div className="p-3 bg-emerald-100 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-emerald-600" />
-            </div>
+        {/* Performance Trend */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <h3 className="font-semibold mb-4">Performance Trend</h3>
+          <div className="flex items-end justify-between h-24 space-x-2">
+            {progress.recentExams.slice(0, 5).map((exam, index) => (
+              <div key={index} className="flex flex-col items-center space-y-2">
+                <div 
+                  className="bg-blue-600 rounded-t"
+                  style={{ height: `${exam.score}%`, width: '24px' }}
+                />
+                <span className="text-xs text-gray-600">
+                  {new Date(exam.date).toLocaleDateString('en-US', { month: 'short' })}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 mb-1">Best Score</p>
-              <p className={`text-2xl font-bold ${getScoreColor(progress.bestScore)}`}>
-                {progress.bestScore}%
-              </p>
-            </div>
-            <div className="p-3 bg-orange-100 rounded-lg">
-              <Award className="h-6 w-6 text-orange-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 mb-1">Current Grade</p>
-              <p className="text-2xl font-bold text-gray-900">{profile?.grade}</p>
-            </div>
-            <div className="p-3 bg-purple-100 rounded-lg">
-              <Star className="h-6 w-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Recent Exams */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <Calendar className="h-5 w-5 mr-2 text-blue-600" />
-              Recent Exams
-            </h3>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold">Recent Exams</h3>
+            <button className="text-blue-600 text-sm font-medium">View All</button>
           </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {progress.recentExams.map((exam, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div className="space-y-3">
+            {progress.recentExams.slice(0, 2).map((exam, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="bg-blue-100 p-2 rounded">
+                    <span className="text-xs font-mono">📚</span>
+                  </div>
                   <div>
-                    <p className="font-medium text-gray-900">{exam.subject}</p>
-                    <p className="text-sm text-gray-500">{exam.date}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium ${getScoreBadgeColor(exam.score)}`}>
-                      {exam.score}%
-                    </span>
+                    <div className="font-medium">{exam.subject}</div>
+                    <div className="text-sm text-gray-600">{exam.date}</div>
                   </div>
                 </div>
-              ))}
-            </div>
+                <div className="text-right">
+                  <div className={`text-lg font-bold ${getScoreColor(exam.score)}`}>{exam.score}%</div>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getScoreBadgeColor(exam.score)}`}>
+                    Grade: {exam.score >= 90 ? 'A' : exam.score >= 80 ? 'B' : exam.score >= 70 ? 'C' : 'D'}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Subject Progress */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <BarChart3 className="h-5 w-5 mr-2 text-emerald-600" />
-              Subject Progress
-            </h3>
+        {/* Upcoming Exams */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <h3 className="font-semibold mb-4">Upcoming Exams</h3>
+          <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <div className="bg-amber-100 p-2 rounded">
+                <Calendar className="h-4 w-4 text-amber-600" />
+              </div>
+              <div>
+                <div className="font-medium">Next Exam</div>
+                <div className="text-sm text-gray-600">Check schedule for details</div>
+              </div>
+            </div>
+            <button className="px-3 py-1 text-sm border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50">
+              Remind Me
+            </button>
           </div>
-          <div className="p-6">
-            <div className="space-y-6">
-              {progress.subjectProgress.map((subject, index) => (
-                <div key={index}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-900">{subject.subject}</span>
-                    <span className={`text-sm font-medium ${getScoreColor(subject.averageScore)}`}>
-                      {subject.averageScore}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${subject.averageScore}%` }}
-                    ></div>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">{subject.examCount} exams taken</p>
-                </div>
-              ))}
+        </div>
+
+        {/* Board Updates */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold">Board Updates</h3>
+            <button className="text-blue-600 text-sm font-medium">View Board</button>
+          </div>
+          <div className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+            <div className="bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-semibold">
+              MJ
+            </div>
+            <div className="flex-1">
+              <div className="font-medium text-sm">Mr. Johnson</div>
+              <div className="text-sm text-gray-600">
+                New study materials for Math have been uploaded. Check them out before the exam!
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Upcoming Exams */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Exams</h3>
-        <StudentExamsList studentGrade={profile?.grade || 5} />
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
+        <div className="flex items-center justify-around p-4">
+          <button 
+            onClick={() => setActiveTab('dashboard')}
+            className={`flex flex-col items-center space-y-1 ${activeTab === 'dashboard' ? 'text-blue-600' : 'text-gray-600'}`}
+          >
+            <Home className="h-5 w-5" />
+            <span className="text-xs">Home</span>
+          </button>
+          <button className="flex flex-col items-center space-y-1 text-gray-600">
+            <BarChart3 className="h-5 w-5" />
+            <span className="text-xs">Scores</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('qa')}
+            className={`flex flex-col items-center space-y-1 ${activeTab === 'qa' ? 'text-blue-600' : 'text-gray-600'}`}
+          >
+            <MessageSquare className="h-5 w-5" />
+            <span className="text-xs">Board</span>
+          </button>
+          <button className="flex flex-col items-center space-y-1 text-gray-600">
+            <User className="h-5 w-5" />
+            <span className="text-xs">Profile</span>
+          </button>
+        </div>
       </div>
+
+      {/* Floating Action Button */}
+      <button 
+        onClick={() => setShowNewQuestion(true)}
+        className="fixed bottom-20 right-4 rounded-full h-14 w-14 bg-blue-600 hover:bg-blue-700 shadow-lg text-white flex items-center justify-center"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
     </div>
   );
 
@@ -631,25 +659,24 @@ const StudentPortal: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center">
-                <BookOpen className="h-6 w-6 text-white" />
+              <div className="bg-blue-600 text-white p-2 rounded-lg">
+                <BarChart3 className="h-5 w-5" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">MathTrack</h1>
-                <p className="text-sm text-gray-500">Student Portal</p>
-              </div>
+              <span className="font-semibold">Score Manager</span>
             </div>
             
             <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{profile?.full_name}</p>
-                <p className="text-xs text-gray-500">Grade {profile?.grade}</p>
+              <div className="flex items-center space-x-3">
+                <Bell className="h-5 w-5 text-gray-600" />
+                <div className="bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center">
+                  <User className="h-4 w-4 text-gray-600" />
+                </div>
               </div>
               <button
                 onClick={handleSignOut}
@@ -664,7 +691,7 @@ const StudentPortal: React.FC = () => {
       </header>
 
       {/* Navigation */}
-      <nav className="bg-white border-b border-gray-200">
+      <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-8">
             <button
