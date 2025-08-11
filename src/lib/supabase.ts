@@ -12,6 +12,142 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export type Database = {
   public: {
     Tables: {
+      grades: {
+        Row: {
+          id: string
+          name: string
+          display_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          display_order: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          display_order?: number
+          created_at?: string
+        }
+      }
+      subjects: {
+        Row: {
+          id: string
+          name: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          created_at?: string
+        }
+      }
+      grades_subjects: {
+        Row: {
+          grade_id: string
+          subject_id: string
+          created_at: string
+        }
+        Insert: {
+          grade_id: string
+          subject_id: string
+          created_at?: string
+        }
+        Update: {
+          grade_id?: string
+          subject_id?: string
+          created_at?: string
+        }
+      }
+      exams: {
+        Row: {
+          id: string
+          title: string
+          grade_id: string
+          subject_id: string
+          duration_minutes: number
+          start_time: string
+          end_time: string
+          instructions: string | null
+          requires_submission: boolean
+          max_attempts: number
+          is_active: boolean
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          grade_id: string
+          subject_id: string
+          duration_minutes?: number
+          start_time: string
+          end_time: string
+          instructions?: string | null
+          requires_submission?: boolean
+          max_attempts?: number
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          grade_id?: string
+          subject_id?: string
+          duration_minutes?: number
+          start_time?: string
+          end_time?: string
+          instructions?: string | null
+          requires_submission?: boolean
+          max_attempts?: number
+          is_active?: boolean
+          created_by?: string | null
+          created_at?: string
+        }
+      }
+      exam_questions: {
+        Row: {
+          id: string
+          exam_id: string
+          question_number: number
+          question_type: string
+          question_text: string
+          options: any | null
+          correct_answer: string
+          points: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          exam_id: string
+          question_number: number
+          question_type: string
+          question_text: string
+          options?: any | null
+          correct_answer: string
+          points?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          exam_id?: string
+          question_number?: number
+          question_type?: string
+          question_text?: string
+          options?: any | null
+          correct_answer?: string
+          points?: number
+          created_at?: string
+        }
+      }
       user_profiles: {
         Row: {
           id: string
