@@ -772,5 +772,3 @@ const AdminPortal: React.FC = () => {
 };
 
 export default AdminPortal;
-
-export default AdminPortal
