@@ -165,11 +165,21 @@ export const boardApiService = {
   },
 
   // Get all Q&A posts with answers
-  getQAPosts: async (): Promise<QAPost[]> => {
-    const { data, error } = await supabase
+  getQAPosts: async (gradeLevel?: number): Promise<QAPost[]> => {
+    let query = supabase
       .from('qa_posts')
       .select(`
         *,
+        answers:qa_posts!parent_id(*)
+      `)
+      .is('parent_id', null)
+      .order('created_at', { ascending: false });
+    
+    // Filter by grade level if specified (for students)
+    if (gradeLevel) {
+      query = query.or(`grade_level.is.null,grade_level.eq.${gradeLevel}`);
+    }
+    
     const { data, error } = await query;
     
     if (error) throw error;
@@ -214,7 +224,6 @@ export const boardApiService = {
       title: post.title,
       content: post.content,
       postType: post.post_type,
-      gradeLevel: announcement.grade_level,
       parentId: post.parent_id,
       isResolved: post.is_resolved,
       createdAt: post.created_at,
@@ -247,6 +256,7 @@ export const boardApiService = {
     content: string;
     postType: 'question' | 'answer';
     parentId?: string;
+    gradeLevel?: number;
   }): Promise<QAPost> => {
     const user = (await supabase.auth.getUser()).data.user;
     const { data: profile } = await supabase
@@ -257,21 +267,9 @@ export const boardApiService = {
     
     const authorName = profile?.full_name || 'Anonymous';
     const authorInitials = authorName.split(' ').map(n => n[0]).join('').toUpperCase();
-  getQAPosts: async (gradeLevel?: number): Promise<QAPost[]> => {
-    let query = supabase
+    
+    const { data, error } = await supabase
       .from('qa_posts')
-      .select(`
-        *,
-        answers:qa_posts!parent_id(*)
-      `)
-      .is('parent_id', null)
-      .order('created_at', { ascending: false });
-    
-    // Filter by grade level if specified (for students)
-    if (gradeLevel) {
-      query = query.or(`grade_level.is.null,grade_level.eq.${gradeLevel}`);
-    }
-    
       .insert({
         author_id: user?.id,
         author_name: authorName,
@@ -279,7 +277,8 @@ export const boardApiService = {
         title: post.title,
         content: post.content,
         post_type: post.postType,
-        parent_id: post.parentId
+        parent_id: post.parentId,
+        grade_level: post.gradeLevel
       })
       .select()
       .single();
@@ -299,7 +298,12 @@ export const boardApiService = {
       createdAt: data.created_at,
       updatedAt: data.updated_at,
       likesCount: 0,
-    const { data, error } = await query;
+      commentsCount: 0,
+      isLiked: false
+    };
+  },
+
+  // Toggle like on a post
   toggleLike: async (postId: string, postType: 'announcement' | 'qa_post'): Promise<boolean> => {
     const user = (await supabase.auth.getUser()).data.user;
     
@@ -336,7 +340,6 @@ export const boardApiService = {
     }
   },
 
-      gradeLevel: post.grade_level,
   // Get comments for a post
   getPostComments: async (postId: string, postType: 'announcement' | 'qa_post'): Promise<PostComment[]> => {
     const { data, error } = await supabase
@@ -352,7 +355,6 @@ export const boardApiService = {
       id: comment.id,
       postId: comment.post_id,
       postType: comment.post_type,
-        gradeLevel: answer.grade_level,
       authorId: comment.author_id,
       authorName: comment.author_name,
       authorInitials: comment.author_initials,
@@ -368,7 +370,6 @@ export const boardApiService = {
     const { data: profile } = await supabase
       .from('profiles')
       .select('full_name')
-    gradeLevel?: number;
       .eq('id', user?.id)
       .single();
     
@@ -384,8 +385,7 @@ export const boardApiService = {
         author_name: authorName,
         author_initials: authorInitials,
         content: content
-        parent_id: post.parentId,
-        grade_level: post.gradeLevel
+      })
       .select()
       .single();
     
@@ -399,7 +399,6 @@ export const boardApiService = {
       authorName: data.author_name,
       authorInitials: data.author_initials,
       content: data.content,
-      gradeLevel: data.grade_level,
       createdAt: data.created_at,
       updatedAt: data.updated_at
     };
