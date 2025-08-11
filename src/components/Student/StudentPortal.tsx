@@ -10,6 +10,7 @@ import {
   MessageSquare,
   User,
   Bell,
+  ArrowLeft,
   LogOut,
   Heart,
   MessageCircle,
@@ -368,7 +369,7 @@ const StudentPortal: React.FC = () => {
   );
 
   const renderScores = () => (
-    <div className="space-y-6">
+    <div className="p-4 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">My Scores</h2>
       </div>
@@ -477,7 +478,7 @@ const StudentPortal: React.FC = () => {
   );
 
   const renderBoard = () => (
-    <div className="space-y-6">
+    <div className="p-4 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Student Board</h2>
         <button
@@ -581,7 +582,7 @@ const StudentPortal: React.FC = () => {
   );
 
   const renderProfile = () => (
-    <div className="space-y-6">
+    <div className="p-4 space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">My Profile</h2>
       </div>
@@ -621,7 +622,7 @@ const StudentPortal: React.FC = () => {
   );
 
   const renderAnnouncements = () => (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Announcements</h2>
       </div>
@@ -722,7 +723,7 @@ const StudentPortal: React.FC = () => {
   );
 
   const renderQA = () => (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Q&A Forum</h2>
         <button
@@ -921,16 +922,26 @@ const StudentPortal: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <div className="bg-blue-600 text-white p-2 rounded-lg">
-                <BarChart3 className="h-5 w-5" />
+            <div className="flex items-center space-x-4">
+              {activeTab !== 'dashboard' && (
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </button>
+              )}
+              <div className="flex items-center space-x-3">
+                <div className="bg-blue-600 text-white p-2 rounded-lg">
+                  <BarChart3 className="h-5 w-5" />
+                </div>
+                <span className="font-semibold">Score Manager</span>
               </div>
-              <span className="font-semibold">Score Manager</span>
             </div>
             
             <div className="flex items-center space-x-4">
@@ -952,31 +963,47 @@ const StudentPortal: React.FC = () => {
         </div>
       </header>
 
-      {/* Navigation */}
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'dashboard'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              Dashboard
-            </button>
-          </div>
-        </div>
-      </nav>
-
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="pb-20">
         {activeTab === 'dashboard' && renderDashboard()}
         {activeTab === 'scores' && renderScores()}
         {activeTab === 'board' && renderBoard()}
         {activeTab === 'profile' && renderProfile()}
       </main>
+
+      {/* Bottom Navigation - Always visible */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
+        <div className="flex items-center justify-around p-4">
+          <button 
+            onClick={() => setActiveTab('dashboard')}
+            className={`flex flex-col items-center space-y-1 ${activeTab === 'dashboard' ? 'text-blue-600' : 'text-gray-600'}`}
+          >
+            <Home className="h-5 w-5" />
+            <span className="text-xs">Home</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('scores')}
+            className={`flex flex-col items-center space-y-1 ${activeTab === 'scores' ? 'text-blue-600' : 'text-gray-600'}`}
+          >
+            <BarChart3 className="h-5 w-5" />
+            <span className="text-xs">Scores</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('board')}
+            className={`flex flex-col items-center space-y-1 ${activeTab === 'board' ? 'text-blue-600' : 'text-gray-600'}`}
+          >
+            <MessageSquare className="h-5 w-5" />
+            <span className="text-xs">Board</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('profile')}
+            className={`flex flex-col items-center space-y-1 ${activeTab === 'profile' ? 'text-blue-600' : 'text-gray-600'}`}
+          >
+            <User className="h-5 w-5" />
+            <span className="text-xs">Profile</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
