@@ -39,15 +39,18 @@ const AppContent: React.FC = () => {
     );
   }
 
-  // Redirect students to a different interface (for now, show message)
+  // Show student portal for students
   if (profile.role === 'student') {
     return <StudentPortal />;
   }
 
-  // Show new admin portal
+  // Show admin portal for admins
   if (profile.role === 'admin') {
     return <AdminPortal />;
   }
+
+  // Fallback for unknown roles - show login
+  return <AuthContainer />;
 
   const renderContent = () => {
     switch (activeSection) {

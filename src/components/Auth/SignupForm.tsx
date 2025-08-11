@@ -98,6 +98,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ onBackToLogin }) => {
         options: {
           data: {
             full_name: formData.fullName,
+            role: formData.role,
             ...(formData.role === 'student' ? { grade: formData.grade } : {})
           }
         }
@@ -106,6 +107,20 @@ const SignupForm: React.FC<SignupFormProps> = ({ onBackToLogin }) => {
       if (error) throw error;
 
       if (data.user) {
+        // Create user profile with the selected role
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            full_name: formData.fullName,
+            role: formData.role,
+            grade: formData.role === 'student' ? formData.grade : null
+          });
+
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+        }
+
         setSuccess(true);
       }
     } catch (err: any) {
