@@ -1,6 +1,3 @@
-};
-};
-
 // Upload answer sheet file
 export const uploadAnswerSheet = async (
   examId: string,
