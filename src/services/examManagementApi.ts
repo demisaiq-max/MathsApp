@@ -17,29 +17,21 @@ export interface CreateExamData {
   duration_minutes: number;
   start_time: string;
   end_time: string;
-  instructions?: string;
-  requires_submission: boolean;
-  max_attempts: number;
   questions: ExamQuestion[];
 }
 
 export interface ExamWithQuestions {
   id: string;
   title: string;
-  grade_id: string;
-  subject_id: string;
+  grade_level: number;
+  subject: string;
   duration_minutes: number;
   start_time: string;
   end_time: string;
-  instructions?: string;
-  requires_submission: boolean;
-  max_attempts: number;
   is_active: boolean;
   created_by: string;
   created_at: string;
   questions: ExamQuestion[];
-  grade_name?: string;
-  subject_name?: string;
 }
 
 export const examManagementApi = {
@@ -58,9 +50,6 @@ export const examManagementApi = {
         duration_minutes: examData.duration_minutes,
         start_time: examData.start_time,
         end_time: examData.end_time,
-        instructions: examData.instructions,
-        requires_submission: examData.requires_submission,
-        max_attempts: examData.max_attempts,
         is_active: true,
         created_by: user.id
       })
@@ -121,14 +110,9 @@ export const examManagementApi = {
       duration_minutes: exam.duration_minutes,
       start_time: exam.start_time,
       end_time: exam.end_time,
-      instructions: exam.instructions,
-      requires_submission: exam.requires_submission,
-      max_attempts: exam.max_attempts,
       is_active: exam.is_active,
       created_by: exam.created_by,
       created_at: exam.created_at,
-      grade_name: `Grade ${exam.grade_level}`,
-      subject_name: exam.subject,
       questions: exam.exam_questions || []
     }));
   },
@@ -157,14 +141,9 @@ export const examManagementApi = {
       duration_minutes: data.duration_minutes,
       start_time: data.start_time,
       end_time: data.end_time,
-      instructions: data.instructions,
-      requires_submission: data.requires_submission,
-      max_attempts: data.max_attempts,
       is_active: data.is_active,
       created_by: data.created_by,
       created_at: data.created_at,
-      grade_name: `Grade ${data.grade_level}`,
-      subject_name: data.subject,
       questions: data.exam_questions || []
     };
   },
@@ -180,9 +159,6 @@ export const examManagementApi = {
         duration_minutes: updates.duration_minutes,
         start_time: updates.start_time,
         end_time: updates.end_time,
-        instructions: updates.instructions,
-        requires_submission: updates.requires_submission,
-        max_attempts: updates.max_attempts
       })
       .eq('id', examId);
 

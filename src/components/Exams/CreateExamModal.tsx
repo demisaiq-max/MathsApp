@@ -21,9 +21,6 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, onSu
     duration_minutes: 60,
     start_time: '',
     end_time: '',
-    instructions: '',
-    requires_submission: true,
-    max_attempts: 1,
     questions: []
   });
 
@@ -111,9 +108,6 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, onSu
       duration_minutes: 60,
       start_time: '',
       end_time: '',
-      instructions: '',
-      requires_submission: true,
-      max_attempts: 1,
       questions: []
     });
     setCurrentStep(1);
@@ -216,45 +210,6 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, onSu
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Max Attempts
-          </label>
-          <input
-            type="number"
-            min="1"
-            value={formData.max_attempts}
-            onChange={(e) => setFormData({ ...formData, max_attempts: parseInt(e.target.value) })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Instructions
-        </label>
-        <textarea
-          value={formData.instructions}
-          onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          rows={3}
-          placeholder="Enter exam instructions..."
-        />
-      </div>
-
-      <div className="flex items-center space-x-2">
-        <input
-          type="checkbox"
-          id="requires_submission"
-          checked={formData.requires_submission}
-          onChange={(e) => setFormData({ ...formData, requires_submission: e.target.checked })}
-          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-        />
-        <label htmlFor="requires_submission" className="text-sm text-gray-700">
-          Require submission (students must submit their answers)
-        </label>
       </div>
     </div>
   );
