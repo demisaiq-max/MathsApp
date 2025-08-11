@@ -27,7 +27,8 @@ import {
   Star,
   Award,
   BookOpen,
-  LogOut
+  LogOut,
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -66,7 +67,11 @@ const AdminPortalContent: React.FC = () => {
   const [selectedUpload, setSelectedUpload] = useState<AnswerSheetUpload | null>(null);
   const [showGradingModal, setShowGradingModal] = useState(false);
   const [showCreateExamModal, setShowCreateExamModal] = useState(false);
+  const [showNewAnnouncement, setShowNewAnnouncement] = useState(false);
+  const [showComments, setShowComments] = useState<string | null>(null);
+  const [newComment, setNewComment] = useState('');
   const [gradingData, setGradingData] = useState({ grade: '', feedback: '' });
+  const [studentTab, setStudentTab] = useState('announcements');
 
   useEffect(() => {
     fetchData();
@@ -76,7 +81,21 @@ const AdminPortalContent: React.FC = () => {
     if (activeTab === 'exams') {
       fetchExams();
     }
-  }, [activeTab, gradeId, subjectId]);
+    if (activeTab === 'announcements') {
+      fetchAnnouncements();
+    }
+    if (activeTab === 'qa') {
+      fetchQAPosts();
+    }
+    if (activeTab === 'students') {
+      if (studentTab === 'announcements') {
+        fetchAnnouncements();
+      }
+      if (studentTab === 'qa') {
+        fetchQAPosts();
+      }
+    }
+  }, [activeTab, studentTab]);
 
   useEffect(() => {
     // Update exam statuses periodically
@@ -153,6 +172,32 @@ const AdminPortalContent: React.FC = () => {
       console.error('Error fetching exams:', error);
     }
   };
+
+  const fetchAnnouncements = async () => {
+    // Mock function - implement actual API call
+    console.log('Fetching announcements...');
+  };
+
+  const fetchQAPosts = async () => {
+    // Mock function - implement actual API call
+    console.log('Fetching Q&A posts...');
+  };
+
+  const renderAnnouncements = () => (
+    <div className="text-center py-12">
+      <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+      <h3 className="text-lg font-medium text-gray-900 mb-2">Announcements</h3>
+      <p className="text-gray-500">Coming soon - Manage announcements</p>
+    </div>
+  );
+
+  const renderQA = () => (
+    <div className="text-center py-12">
+      <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+      <h3 className="text-lg font-medium text-gray-900 mb-2">Q&A Forum</h3>
+      <p className="text-gray-500">Coming soon - Manage Q&A forum</p>
+    </div>
+  );
 
   const handleGradeSubmission = async () => {
     if (!selectedUpload || !gradingData.grade) return;
@@ -742,12 +787,82 @@ const AdminPortalContent: React.FC = () => {
         {activeTab === 'submissions' && renderSubmissions()}
         {activeTab === 'exams' && renderExams()}
         {activeTab === 'students' && (
-          <div className="text-center py-12">
-            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Student Management</h3>
-            <p className="text-gray-500">Coming soon - Manage student accounts</p>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">Student Management</h2>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => setShowNewAnnouncement(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>New Announcement</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Student Management Tabs */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="border-b border-gray-200">
+                <nav className="flex space-x-8 px-6">
+                  <button
+                    onClick={() => setStudentTab('announcements')}
+                    className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      studentTab === 'announcements'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Bell className="h-4 w-4" />
+                      <span>Announcements</span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setStudentTab('qa')}
+                    className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      studentTab === 'qa'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <MessageSquare className="h-4 w-4" />
+                      <span>Q&A Forum</span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setStudentTab('accounts')}
+                    className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      studentTab === 'accounts'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Users className="h-4 w-4" />
+                      <span>Student Accounts</span>
+                    </div>
+                  </button>
+                </nav>
+              </div>
+
+              <div className="p-6">
+                {studentTab === 'announcements' && renderAnnouncements()}
+                {studentTab === 'qa' && renderQA()}
+                {studentTab === 'accounts' && (
+                  <div className="text-center py-12">
+                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Student Accounts</h3>
+                    <p className="text-gray-500">Coming soon - Manage student accounts</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
+        {activeTab === 'announcements' && renderAnnouncements()}
+        {activeTab === 'qa' && renderQA()}
       </main>
 
       {/* Grading Modal */}
