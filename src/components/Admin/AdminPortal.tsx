@@ -78,6 +78,21 @@ const AdminPortalContent: React.FC = () => {
     }
   }, [activeTab, gradeId, subjectId]);
 
+  useEffect(() => {
+    // Update exam statuses periodically
+    const updateStatuses = async () => {
+      try {
+        await examManagementApi.updateExamStatuses();
+      } catch (error) {
+        console.error('Error updating exam statuses:', error);
+      }
+    };
+    
+    updateStatuses();
+    const interval = setInterval(updateStatuses, 60000); // Every minute
+    return () => clearInterval(interval);
+  }, []);
+
   const fetchData = async () => {
     try {
       setLoading(true);

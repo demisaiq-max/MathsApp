@@ -69,6 +69,28 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, onSu
     });
   };
 
+  const validateQuestions = () => {
+    const validTypes = ['multiple_choice', 'true_false', 'short_answer', 'essay'];
+    return formData.questions.every(q => {
+      // Check if question type is valid
+      if (!validTypes.includes(q.question_type)) return false;
+      
+      // Check if question text is not empty
+      if (!q.question_text.trim()) return false;
+      
+      // For multiple choice, check if all options are filled and correct answer is selected
+      if (q.question_type === 'multiple_choice') {
+        if (!q.options || q.options.some(opt => !opt.trim())) return false;
+        if (!q.correct_answer) return false;
+      }
+      
+      // For other types, just check if correct answer is provided
+      if (q.question_type !== 'multiple_choice' && !q.correct_answer.trim()) return false;
+      
+      return true;
+    });
+  };
+
   const updateQuestion = (index: number, updates: Partial<ExamQuestion>) => {
     const updatedQuestions = formData.questions.map((q, i) => 
       i === index ? { ...q, ...updates } : q
@@ -89,12 +111,37 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, onSu
   const handleSubmit = async () => {
     try {
       setLoading(true);
-      await examManagementApi.createExam(formData);
+      
+      // Validate form data
+      if (!validateQuestions()) {
+        alert('Please fill all required question fields correctly');
+        return;
+      }
+      
+      // Ensure question types are valid and normalized
+      const validatedFormData = {
+        ...formData,
+        questions: formData.questions.map(q => ({
+          ...q,
+          question_type: q.question_type as ExamQuestion['question_type']
+        }))
+      };
+      
+      await examManagementApi.createExam(validatedFormData);
       onSuccess();
       onClose();
       resetForm();
     } catch (error) {
       console.error('Error creating exam:', error);
+      
+      // Show specific error messages
+      if (error.code === '23514') {
+        alert('Invalid question type. Please use: multiple_choice, true_false, short_answer, or essay');
+      } else if (error.message?.includes('exam_questions')) {
+        alert('Error saving questions. Please check question format and try again.');
+      } else {
+        alert('Error creating exam: ' + (error.message || 'Unknown error'));
+      }
     } finally {
       setLoading(false);
     }

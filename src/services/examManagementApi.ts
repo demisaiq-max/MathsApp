@@ -28,6 +28,7 @@ export interface ExamWithQuestions {
   duration_minutes: number;
   start_time: string;
   end_time: string;
+  status: string;
   is_active: boolean;
   created_by: string;
   created_at: string;
@@ -40,6 +41,11 @@ export const examManagementApi = {
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) throw new Error('User not authenticated');
 
+    // Determine status based on start time
+    const now = new Date();
+    const startTime = new Date(examData.start_time);
+    const status = startTime > now ? 'scheduled' : 'active';
+
     // Start a transaction
     const { data: exam, error: examError } = await supabase
       .from('exams')
@@ -50,6 +56,7 @@ export const examManagementApi = {
         duration_minutes: examData.duration_minutes,
         start_time: examData.start_time,
         end_time: examData.end_time,
+        status: status,
         is_active: true,
         created_by: user.id
       })
@@ -60,15 +67,23 @@ export const examManagementApi = {
 
     // Insert questions
     if (examData.questions.length > 0) {
-      const questionsToInsert = examData.questions.map(question => ({
+      const questionsToInsert = examData.questions.map(question => {
+        // Ensure question_type matches database constraint exactly
+        let questionType = question.question_type;
+        if (questionType === 'mcq') questionType = 'multiple_choice';
+        if (questionType === 'tf') questionType = 'true_false';
+        
+        return {
         exam_id: exam.id,
         question_number: question.question_number,
-        question_type: question.question_type,
+        question_type: questionType,
         question_text: question.question_text,
-        options: question.options ? JSON.stringify(question.options) : null,
+        options: question.question_type === 'multiple_choice' && question.options ? 
+          JSON.stringify(question.options) : null,
         correct_answer: question.correct_answer,
-        points: question.points
-      }));
+        points: question.points || 1
+        };
+      });
 
       const { error: questionsError } = await supabase
         .from('exam_questions')
@@ -81,7 +96,7 @@ export const examManagementApi = {
   },
 
   // Get exams with filtering
-  getExams: async (gradeLevel?: number, subject?: string): Promise<ExamWithQuestions[]> => {
+  getExams: async (gradeLevel?: string, subject?: string): Promise<ExamWithQuestions[]> => {
     let query = supabase
       .from('exams')
       .select(`
@@ -91,7 +106,7 @@ export const examManagementApi = {
       .order('created_at', { ascending: false });
 
     if (gradeLevel) {
-      query = query.eq('grade_level', gradeLevel);
+      query = query.eq('grade_level', parseInt(gradeLevel));
     }
 
     if (subject) {
@@ -110,11 +125,93 @@ export const examManagementApi = {
       duration_minutes: exam.duration_minutes,
       start_time: exam.start_time,
       end_time: exam.end_time,
+      status: exam.status || 'draft',
       is_active: exam.is_active,
       created_by: exam.created_by,
       created_at: exam.created_at,
       questions: exam.exam_questions || []
     }));
+  },
+
+  // Get exams for specific student grade
+  getStudentExams: async (studentGrade: number): Promise<ExamWithQuestions[]> => {
+    const { data, error } = await supabase
+      .from('exams')
+      .select(`
+        *,
+        exam_questions(*)
+      `)
+      .eq('grade_level', studentGrade)
+      .in('status', ['scheduled', 'active'])
+      .order('start_time', { ascending: true });
+
+    if (error) throw error;
+
+    return data.map(exam => ({
+      id: exam.id,
+      title: exam.title,
+      grade_level: exam.grade_level,
+      subject: exam.subject,
+      duration_minutes: exam.duration_minutes,
+      start_time: exam.start_time,
+      end_time: exam.end_time,
+      status: exam.status || 'draft',
+      is_active: exam.is_active,
+      created_by: exam.created_by,
+      created_at: exam.created_at,
+      questions: exam.exam_questions || []
+    }));
+  },
+
+  // Get upcoming exams
+  getUpcomingExams: async (): Promise<ExamWithQuestions[]> => {
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('exams')
+      .select(`
+        *,
+        exam_questions(*)
+      `)
+      .eq('status', 'scheduled')
+      .gt('start_time', now)
+      .order('start_time', { ascending: true });
+
+    if (error) throw error;
+
+    return data.map(exam => ({
+      id: exam.id,
+      title: exam.title,
+      grade_level: exam.grade_level,
+      subject: exam.subject,
+      duration_minutes: exam.duration_minutes,
+      start_time: exam.start_time,
+      end_time: exam.end_time,
+      status: exam.status || 'draft',
+      is_active: exam.is_active,
+      created_by: exam.created_by,
+      created_at: exam.created_at,
+      questions: exam.exam_questions || []
+    }));
+  },
+
+  // Update exam statuses based on time
+  updateExamStatuses: async (): Promise<void> => {
+    const now = new Date().toISOString();
+    
+    // Update scheduled exams that should be active
+    await supabase
+      .from('exams')
+      .update({ status: 'active' })
+      .eq('status', 'scheduled')
+      .lte('start_time', now)
+      .gt('end_time', now);
+
+    // Update active exams that should be completed
+    await supabase
+      .from('exams')
+      .update({ status: 'completed' })
+      .eq('status', 'active')
+      .lte('end_time', now);
   },
 
   // Get single exam with questions
@@ -141,6 +238,7 @@ export const examManagementApi = {
       duration_minutes: data.duration_minutes,
       start_time: data.start_time,
       end_time: data.end_time,
+      status: data.status || 'draft',
       is_active: data.is_active,
       created_by: data.created_by,
       created_at: data.created_at,

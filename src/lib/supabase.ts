@@ -75,6 +75,7 @@ export type Database = {
           duration_minutes: number
           start_time: string
           end_time: string
+          status: string
           instructions: string | null
           requires_submission: boolean
           max_attempts: number
@@ -90,6 +91,7 @@ export type Database = {
           duration_minutes?: number
           start_time: string
           end_time: string
+          status?: string
           instructions?: string | null
           requires_submission?: boolean
           max_attempts?: number
@@ -105,6 +107,7 @@ export type Database = {
           duration_minutes?: number
           start_time?: string
           end_time?: string
+          status?: string
           instructions?: string | null
           requires_submission?: boolean
           max_attempts?: number
