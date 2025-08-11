@@ -497,7 +497,7 @@ const AdminPortal: React.FC = () => {
             </div>
             
             <div className="flex items-center space-x-4">
-              <button className="flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+              <button className="hidden md:flex items-center space-x-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
                 <Bell className="h-4 w-4" />
                 <span className="text-sm">Notifications</span>
               </button>
