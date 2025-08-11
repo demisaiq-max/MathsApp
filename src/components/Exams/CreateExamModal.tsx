@@ -16,8 +16,8 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, onSu
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<CreateExamData>({
     title: '',
-    grade_id: '',
-    subject_id: '',
+    grade_level: 5,
+    subject: '',
     duration_minutes: 60,
     start_time: '',
     end_time: '',
@@ -34,10 +34,10 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, onSu
   }, [isOpen]);
 
   useEffect(() => {
-    if (formData.grade_id) {
-      fetchSubjectsForGrade(formData.grade_id);
+    if (formData.grade_level) {
+      fetchSubjectsForGrade(formData.grade_level.toString());
     }
-  }, [formData.grade_id]);
+  }, [formData.grade_level]);
 
   const fetchGrades = async () => {
     try {
@@ -106,8 +106,8 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, onSu
   const resetForm = () => {
     setFormData({
       title: '',
-      grade_id: '',
-      subject_id: '',
+      grade_level: 5,
+      subject: '',
       duration_minutes: 60,
       start_time: '',
       end_time: '',
@@ -141,14 +141,13 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, onSu
             Grade *
           </label>
           <select
-            value={formData.grade_id}
-            onChange={(e) => setFormData({ ...formData, grade_id: e.target.value, subject_id: '' })}
+            value={formData.grade_level}
+            onChange={(e) => setFormData({ ...formData, grade_level: parseInt(e.target.value), subject: '' })}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             required
           >
-            <option value="">Select Grade</option>
             {grades.map((grade) => (
-              <option key={grade.id} value={grade.id}>
+              <option key={grade.id} value={parseInt(grade.id)}>
                 {grade.name}
               </option>
             ))}
@@ -160,15 +159,15 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, onSu
             Subject *
           </label>
           <select
-            value={formData.subject_id}
-            onChange={(e) => setFormData({ ...formData, subject_id: e.target.value })}
+            value={formData.subject}
+            onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            disabled={!formData.grade_id}
+            disabled={!formData.grade_level}
             required
           >
             <option value="">Select Subject</option>
             {subjects.map((subject) => (
-              <option key={subject.id} value={subject.id}>
+              <option key={subject.id} value={subject.name}>
                 {subject.name}
               </option>
             ))}
@@ -463,7 +462,7 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, onSu
             {currentStep < 2 ? (
               <button
                 onClick={() => setCurrentStep(2)}
-                disabled={!formData.title || !formData.grade_id || !formData.subject_id || !formData.start_time || !formData.end_time}
+               disabled={!formData.title || !formData.grade_level || !formData.subject || !formData.start_time || !formData.end_time}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next

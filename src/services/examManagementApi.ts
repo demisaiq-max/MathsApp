@@ -12,8 +12,8 @@ export interface ExamQuestion {
 
 export interface CreateExamData {
   title: string;
-  grade_id: string;
-  subject_id: string;
+  grade_level: number;
+  subject: string;
   duration_minutes: number;
   start_time: string;
   end_time: string;
@@ -53,8 +53,8 @@ export const examManagementApi = {
       .from('exams')
       .insert({
         title: examData.title,
-        grade_id: examData.grade_id,
-        subject_id: examData.subject_id,
+        grade_level: examData.grade_level,
+        subject: examData.subject,
         duration_minutes: examData.duration_minutes,
         start_time: examData.start_time,
         end_time: examData.end_time,
@@ -92,23 +92,21 @@ export const examManagementApi = {
   },
 
   // Get exams with filtering
-  getExams: async (gradeId?: string, subjectId?: string): Promise<ExamWithQuestions[]> => {
+  getExams: async (gradeLevel?: number, subject?: string): Promise<ExamWithQuestions[]> => {
     let query = supabase
       .from('exams')
       .select(`
         *,
-        grades(name),
-        subjects(name),
         exam_questions(*)
       `)
       .order('created_at', { ascending: false });
 
-    if (gradeId) {
-      query = query.eq('grade_id', gradeId);
+    if (gradeLevel) {
+      query = query.eq('grade_level', gradeLevel);
     }
 
-    if (subjectId) {
-      query = query.eq('subject_id', subjectId);
+    if (subject) {
+      query = query.eq('subject', subject);
     }
 
     const { data, error } = await query;
@@ -118,8 +116,8 @@ export const examManagementApi = {
     return data.map(exam => ({
       id: exam.id,
       title: exam.title,
-      grade_id: exam.grade_id,
-      subject_id: exam.subject_id,
+      grade_level: exam.grade_level,
+      subject: exam.subject,
       duration_minutes: exam.duration_minutes,
       start_time: exam.start_time,
       end_time: exam.end_time,
@@ -129,8 +127,8 @@ export const examManagementApi = {
       is_active: exam.is_active,
       created_by: exam.created_by,
       created_at: exam.created_at,
-      grade_name: exam.grades?.name,
-      subject_name: exam.subjects?.name,
+      grade_name: `Grade ${exam.grade_level}`,
+      subject_name: exam.subject,
       questions: exam.exam_questions || []
     }));
   },
@@ -141,8 +139,6 @@ export const examManagementApi = {
       .from('exams')
       .select(`
         *,
-        grades(name),
-        subjects(name),
         exam_questions(*)
       `)
       .eq('id', examId)
@@ -156,8 +152,8 @@ export const examManagementApi = {
     return {
       id: data.id,
       title: data.title,
-      grade_id: data.grade_id,
-      subject_id: data.subject_id,
+      grade_level: data.grade_level,
+      subject: data.subject,
       duration_minutes: data.duration_minutes,
       start_time: data.start_time,
       end_time: data.end_time,
@@ -167,8 +163,8 @@ export const examManagementApi = {
       is_active: data.is_active,
       created_by: data.created_by,
       created_at: data.created_at,
-      grade_name: data.grades?.name,
-      subject_name: data.subjects?.name,
+      grade_name: `Grade ${data.grade_level}`,
+      subject_name: data.subject,
       questions: data.exam_questions || []
     };
   },
@@ -179,8 +175,8 @@ export const examManagementApi = {
       .from('exams')
       .update({
         title: updates.title,
-        grade_id: updates.grade_id,
-        subject_id: updates.subject_id,
+        grade_level: updates.grade_level,
+        subject: updates.subject,
         duration_minutes: updates.duration_minutes,
         start_time: updates.start_time,
         end_time: updates.end_time,
