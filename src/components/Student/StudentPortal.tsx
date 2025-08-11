@@ -211,7 +211,7 @@ const StudentPortal: React.FC = () => {
       <header className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-4">
         <h1 className="text-2xl font-bold mb-1">Welcome back, {profile?.full_name?.split(' ')[0] || 'Student'}!</h1>
         <p className="opacity-90">Ready to check your latest scores?</p>
-      </div>
+      </header>
 
       {/* Stats Cards */}
       <div className="p-4 space-y-4">
